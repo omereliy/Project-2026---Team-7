@@ -15,6 +15,17 @@
 \usepackage{balance} % for balancing columns on the final page
 \usepackage{amsmath}
 
+
+%%% visual coloring for comments with distinct colors per entity for adding notes, todos and reviews necessary to be visualized on pdf.ß
+\newif\ifaddcomments
+\addcommentstrue % Uncomment this line to remove the user comments
+
+
+\newcommand{\todo}[1]{\ifaddcomments{\textcolor{red}{[TODO: #1]}}\fi}
+\newcommand{\omer}[1]{\ifaddcomments{\textcolor{brown}{[Omer: #1]}}\fi}
+\newcommand{\dvir}[1]{\ifaddcomments{\textcolor{blue}{[Dvir: #1]}}\fi}
+\newcommand{\guy}[1]{\ifaddcomments{\textcolor{purple}{[Guy: #1]}}\fi}
+\newcommand{\rotem}[1]{\ifaddcomments{\textcolor{green}{[Rotem: #1]}}\fi}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%% AAMAS-2025 copyright block (do not change!)
@@ -72,7 +83,11 @@ on Autonomous Agents and Multiagent Systems (AAMAS 2025)}{May 19 -- 23, 2025}
 %%% Use this environment to specify a short abstract for your paper.
 
 \begin{abstract}
-% TODO: Write your abstract here
+\todo{Write your abstract here}
+\omer{omer comment example}
+\guy{guy comment example}
+\rotem{rotem comment example}
+\dvir{dvir comment example}
 \end{abstract}
 
 %%% Use this command to specify a few keywords describing your work.
@@ -101,10 +116,10 @@ on Autonomous Agents and Multiagent Systems (AAMAS 2025)}{May 19 -- 23, 2025}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Introduction}
-\label{sec:introduction}
+%\section{Introduction}
+%\label{sec:introduction}
 
-% TODO: Write your introduction here
+\todo{Write your introduction here} 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -169,7 +184,7 @@ where $p_t$ is the model's estimated probability for the ground-truth class, $\g
 
 The focusing parameter $\gamma$ controls the strength of down-weighting: when $\gamma=0$, Focal Loss reduces to standard cross-entropy, and as $\gamma$ increases, the effect of the modulating factor strengthens. When an example is well-classified (high $p_t$), the factor $(1-p_t)^\gamma$ approaches zero, drastically reducing its loss contribution. For instance, with $\gamma=2$, an example with $p_t=0.9$ receives $100\times$ lower loss than standard cross-entropy, and at $p_t \approx 0.968$ it receives $1000\times$ lower loss. Conversely, when $p_t$ is low (misclassified example), the modulating factor stays near 1 and the loss remains substantial.
 
-The $\alpha$ parameter interacts with $\gamma$, and generally $\alpha$ should be decreased slightly as $\gamma$ increases because as easy negatives are down-weighted more aggressively, less emphasis needs to be placed on the positives. The authors demonstrated Focal Loss effectiveness on the COCO object detection dataset. Using $\gamma=2$ and $\alpha=0.25$, their model achieved 34.0 AP compared to 31.1 AP with $\alpha$-balanced cross-entropy alone, a gain of 2.9 AP.
+The $\alpha$ parameter interacts with $\gamma$, and generally $\alpha$ should be decreased slightly as $\gamma$ increases because as easy negatives are down-weighted more aggressively, less emphasis needs to be placed on the positives. The method demonstrated stability across different hyperparameter values, with experiments showing consistent improvements for $\gamma \in [0.5, 5]$ and $\alpha \in [0.25, 0.75]$. Their best model achieved 39.1 AP on COCO (object detection dataset), surpassing both previous one-stage detectors and two-stage methods.
 
 This improvement indicates that by focusing the model's attention on hard examples rather than letting easy negatives dominate the training signal, the detector became better at identifying true objects while maintaining low false positive rates. Analysis of the loss distribution in a converged model revealed that with $\gamma=2$, the vast majority of total loss came from hard examples despite being a small fraction of all samples, confirming that the modulating factor successfully shifted the model's learning focus toward challenging cases that require more attention.
 
@@ -222,7 +237,7 @@ Experiments on four benchmark datasets showed SSM loss achieved notable improvem
 
 \subsection{Summary and Research Gap}
 
-While Meng et al.\ validated Focal Loss in a specialized bioinformatics domain and Wu et al.\ proposed sampling-based alternatives such as SSM, there remains a need for a direct comparison of Focal Loss applied to the specific debate of NCF versus MF in general recommendation scenarios. This research aims to bridge that gap by evaluating whether Focal Loss can improve performance for both architectures and potentially reduce the performance difference between them, offering a solution that transcends the architectural debate highlighted by Rendle et al.
+While Meng et al.\ validated Focal Loss in a specialized bioinformatics domain and Wu et al.\ proposed sampling-based alternatives such as SSM, there remains a need for a direct comparison of Focal Loss applied to the specific debate of NCF versus MF in general recommendation scenarios. This research aims to bridge that gap by evaluating whether Focal Loss can improve performance for both architectures and potentially reduce the performance difference between them.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
