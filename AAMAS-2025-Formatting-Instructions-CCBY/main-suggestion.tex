@@ -50,7 +50,7 @@ on Autonomous Agents and Multiagent Systems (AAMAS 2025)}{May 19 -- 23, 2025}
 
 %%% Use this command to specify the title of your paper.
 
-\title[Focal Loss for NCF]{A Comparative Analysis of Neural Collaborative Filtering and Standard Recommendation Systems using Focal Loss} 
+\title[Focal Loss for NCF]{A Comparative Analysis of Neural Collaborative Filtering and Standard Recommendation Systems using Focal Loss}
 
 %%% Provide names, affiliations, and email addresses for all authors.
 
@@ -85,8 +85,7 @@ on Autonomous Agents and Multiagent Systems (AAMAS 2025)}{May 19 -- 23, 2025}
 %%% Use this environment to specify a short abstract for your paper.
 
 \begin{abstract}
-\rotem{Need to change the title of this research}
-Neural Collaborative Filtering (NCF) models trained on implicit feedback face a fundamental challenge: the extreme class imbalance between observed interactions (positives) and unobserved items (negatives), with ratios often exceeding 20:1. Standard approaches address this through heuristic negative sampling, which discards most data and treats all samples equally regardless of prediction confidence. This work investigates Focal Loss---a dynamically weighted loss function that automatically down-weights well-classified examples---as a principled alternative. Unlike prior applications of Focal Loss in specialized domains that confound the loss function with complex graph architectures and side information, we provide a controlled evaluation on standard recommendation benchmarks (MovieLens 100K and 1M) using vanilla Matrix Factorization and NeuMF architectures. We introduce a robustness study testing whether Focal Loss maintains performance across varying negative sampling ratios (1:4, 1:10, 1:50) where traditional BCE-trained models are expected to degrade. Our experimental design includes comprehensive ablation studies isolating the contributions of the focusing parameter $\gamma$ and class-balancing parameter $\alpha$, providing insights into loss function design for implicit feedback recommendation.
+Neural Collaborative Filtering (NCF) models trained on implicit feedback face a fundamental challenge: the extreme class imbalance between observed interactions (positives) and unobserved items (negatives), with ratios often exceeding 20:1. Standard approaches address this through heuristic negative sampling, which discards most data and treats all samples equally regardless of prediction confidence. This work investigates Focal Loss---a dynamically weighted loss function that automatically down-weights well-classified examples---as a principled alternative. Unlike prior applications of Focal Loss in specialized domains that confound the loss function with complex graph architectures and side information, we provide a controlled evaluation on standard recommendation benchmarks (MovieLens 100K and 1M) using Matrix Factorization and NeuMF architectures. Our experimental design includes comprehensive ablation studies isolating the contributions of the focusing parameter $\gamma$ and class-balancing parameter $\alpha$, providing insights into loss function design for implicit feedback recommendation.
 \end{abstract}
 
 %%% Use this command to specify a few keywords describing your work.
@@ -126,10 +125,9 @@ This work proposes applying Focal Loss~\cite{lin2017focal}---a dynamically weigh
 
 This paper makes the following contributions:
 \begin{itemize}
-    \item We provide a systematic evaluation of Focal Loss for collaborative filtering on standard implicit feedback benchmarks, demonstrating its effectiveness outside specialized bioinformatics domains.
-    \item We conduct an architecture-agnostic analysis by testing Focal Loss on both linear (MF) and non-linear (NeuMF) models, addressing whether benefits are specific to neural architectures.
-    \item We introduce a robustness study across negative sampling ratios (1:4, 1:10, 1:50), testing the hypothesis that Focal Loss can maintain performance when exposed to higher proportions of negative examples.
-    \item Building on Rendle et al.'s~\cite{rendle2020neural} observation that loss function choice may matter more than architectural complexity, we investigate whether Focal Loss can improve both MF and NeuMF, potentially reducing the performance gap between them.
+    \item A systematic evaluation of Focal Loss for collaborative filtering on standard implicit feedback benchmarks (MovieLens 100K and 1M), demonstrating its effectiveness outside specialized bioinformatics domains.
+    \item Comprehensive hyperparameter analysis through ablation studies of the focusing parameter $\gamma$ and class-balancing parameter $\alpha$, providing practical guidance for practitioners.
+    \item Architecture-agnostic validation on both Matrix Factorization and NeuMF, testing whether Focal Loss benefits are specific to neural architectures.
 \end{itemize}
 
 The remainder of this paper is organized as follows. Section~\ref{sec:background} introduces foundational concepts in collaborative filtering, neural recommendation, and Focal Loss. Section~\ref{sec:related-work} surveys related work and identifies the research gap. Section~\ref{sec:methodology} presents our methodology, including formal problem definition and the application of Focal Loss to recommendation. Section~\ref{sec:experiments} details the experimental design, including datasets, baselines, evaluation metrics, and ablation studies.
@@ -279,7 +277,7 @@ Let $\mathcal{O} = \{(u,i) : y_{ui} = 1\}$ denote the set of observed interactio
 \label{eq:imbalance-ratio}
 \end{equation}
 
-For typical recommendation datasets, $\rho$ ranges from 20:1 to over 100:1, meaning negative samples dominate the training data by orders of magnitude. The recommendation task is to learn a scoring function $\hat{y}_{ui} = f(u, i; \Theta)$ that predicts the likelihood of user $u$ interacting with item $i$, where $\Theta$ represents model parameters. The objective is to rank items such that those with higher predicted scores are more likely to be relevant to the user.
+For typical recommendation datasets, $\rho$ ranges from 20:1 to over 100:1, meaning negative samples dominate the training data by orders of magnitude. This asymmetry is compounded by the \textit{Missing Not At Random} (MNAR) problem~\cite{marlin2009collaborative}: the absence of an interaction does not indicate negative preference but merely that the user has not encountered or considered the item. The recommendation task is to learn a scoring function $\hat{y}_{ui} = f(u, i; \Theta)$ that predicts the likelihood of user $u$ interacting with item $i$, where $\Theta$ represents model parameters. The objective is to rank items such that those with higher predicted scores are more likely to be relevant to the user.
 
 \subsection{Focal Loss for Collaborative Filtering}
 \label{sec:fl-cf}
@@ -413,10 +411,9 @@ Focal Loss reduces the hard positive's contribution by only $\sim$8$\times$, com
 
 This work makes the following contributions:
 \begin{enumerate}
-    \item \textbf{Systematic Evaluation of Focal Loss for General-Purpose Recommendation:} Unlike prior work applying Focal Loss to specialized domains~\cite{meng2022weighted}, we evaluate its effectiveness on standard recommendation benchmarks with implicit feedback.
-    \item \textbf{Architecture-Agnostic Analysis:} By testing Focal Loss on both MF \guy{No need to check Focal Loss on MF, MF should be one of  the  baseline methods} and NeuMF, we determine whether performance gains are specific to neural architectures or generalize across model complexity levels.
-    \item \textbf{Reconciliation with Prior Findings:} Building on Rendle et al.'s~\cite{rendle2020neural} observation that loss function choice may matter more than architecture, we investigate whether Focal Loss can improve both MF and NCF, potentially reducing the performance gap between them.
-    \item \textbf{Comprehensive Comparison with Traditional Methods:} We benchmark Focal Loss-enhanced models against traditional collaborative filtering baselines (KNN, SVD) to contextualize improvements within the broader recommendation landscape.
+    \item \textbf{Systematic Evaluation of Focal Loss for General-Purpose Recommendation:} Unlike prior work applying Focal Loss to specialized domains~\cite{meng2022weighted}, we evaluate its effectiveness on standard recommendation benchmarks (MovieLens 100K and 1M) with implicit feedback.
+    \item \textbf{Comprehensive Hyperparameter Analysis:} We conduct ablation studies of the focusing parameter $\gamma$ and class-balancing parameter $\alpha$, providing practical guidance for practitioners on configuring Focal Loss for recommendation tasks.
+    \item \textbf{Architecture-Agnostic Validation:} By testing Focal Loss on both MF and NeuMF, we determine whether performance gains are specific to neural architectures or generalize across model complexity levels.
 \end{enumerate}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -432,18 +429,15 @@ This section describes the experimental setup designed to evaluate the effective
 We formulate the following falsifiable hypotheses:
 
 \begin{description}
-    \item[H1 (Focal Loss improves NeuMF):] NeuMF trained with Focal Loss achieves statistically significantly higher Hit Rate@10 and NDCG@10 compared to NeuMF trained with Binary Cross-Entropy loss.
-    H5 (Optimal focusing parameter): There exists an optimal
-    \item[H2 (Optimal focusing parameter):]value of the focusing parameter $\gamma$ in the range [0.5, 3.0] that
-    maximizes recommendation performance.
-   
-    
+    \item[H1 (Focal Loss improves NeuMF):] NeuMF trained with Focal Loss achieves statistically significantly higher HR@10 and NDCG@10 compared to NeuMF trained with Binary Cross-Entropy loss.
+    \item[H2 (Optimal focusing parameter):] There exists an optimal value of the focusing parameter $\gamma$ in the range $[0.5, 3.0]$ that maximizes recommendation performance.
+    \item[H3 (Architecture-agnostic benefit):] Focal Loss improvements generalize to Matrix Factorization, demonstrating the benefit is not architecture-specific.
 \end{description}
 
 \subsection{Datasets}
 \label{sec:datasets}
 
-We conduct experiments on two widely-used benchmark datasets from the MovieLens collection~\cite{harper2015movielens}, summarized in Table~\ref{tab:datasets}.
+We conduct experiments on two benchmark datasets, summarized in Table~\ref{tab:datasets}. MovieLens 100K and 1M~\cite{harper2015movielens} are standard benchmarks directly comparable with prior NCF literature, providing varying scales while maintaining moderate density levels suitable for evaluating loss function effects.
 
 \begin{table}[h]
 \centering
@@ -505,10 +499,10 @@ Algorithm~\ref{alg:focal-ncf} presents the training procedure for NCF with Focal
 
 \subsection{Baseline Models}
 \label{sec:baselines}
-\omer{need to align the table, it overlaps with the 4.7 section header}
-We compare the following models, summarized in Table~\ref{tab:models}. PopRank serves as a non-personalized baseline that ranks items by global popularity (total interaction count), providing a lower bound that any personalized recommendation method should exceed.
 
-\begin{table}[h]
+We compare the following models, summarized in Table~\ref{tab:models}. Traditional collaborative filtering methods (KNN-Item and SVD) provide context for the comparison, while MF and NeuMF are evaluated with both BCE and Focal Loss to test hypotheses H1 and H3.
+
+\begin{table}[t]
 \centering
 \caption{Models evaluated in experiments}
 \label{tab:models}
@@ -516,12 +510,10 @@ We compare the following models, summarized in Table~\ref{tab:models}. PopRank s
 \hline
 \textbf{Model} & \textbf{Type} & \textbf{Architecture} & \textbf{Loss Functions} \\
 \hline
-PopRank & Non-personalized & Popularity ranking & N/A \\
 KNN-Item & Traditional & Item-based neighborhood & Cosine similarity \\
-KNN-User & Traditional & User-based neighborhood & Cosine similarity \\
 SVD & Traditional & Matrix factorization & MSE \\
-MF & Neural & Dot-product embeddings & BCE, BPR, FL \\
-NeuMF & Neural & GMF + MLP hybrid & BCE, BPR, FL \\
+MF & Neural & Dot-product embeddings & BCE, FL \\
+NeuMF & Neural & GMF + MLP hybrid & BCE, FL \\
 \hline
 \end{tabular}
 \end{table}
@@ -584,16 +576,18 @@ Hyperparameters are tuned on the validation set using grid search. The best conf
     \end{equation}
 \end{itemize}
 
-We report results for $K \in \{5, 10, 20\}$, with HR@10 and NDCG@10 as primary metrics.
+We report HR@10 and NDCG@10 as primary metrics.
 
 \textbf{Evaluation Procedure:} Following the leave-one-out protocol, for each user we rank the held-out positive item against 99 randomly sampled negatives (100 items total) and compute metrics based on the positive item's rank.
+
+\textbf{Convergence Metrics:} To assess whether Focal Loss provides computational efficiency benefits through improved gradient signal quality, we additionally report epochs to convergence (defined as the epoch achieving best validation NDCG@10) and total training time. We also visualize training loss and validation NDCG@10 curves over epochs for BCE vs. Focal Loss to illustrate the focusing effect on optimization trajectory.
 
 \subsection{Statistical Testing}
 \label{sec:statistical-testing}
 
 To ensure reliable conclusions, we employ rigorous statistical testing:
 \begin{itemize}
-    \item \textbf{Multiple Seeds:} Each configuration is run with 10 different random seeds.
+    \item \textbf{Multiple Seeds:} Each configuration is run with 5 different random seeds.
     \item \textbf{Statistical Test:} Wilcoxon signed-rank test~\cite{wilcoxon1945} for paired comparisons (same seed, different methods), as it does not assume normality.
     \item \textbf{Significance Level:} $p < 0.05$ with Bonferroni correction for multiple comparisons.
     \item \textbf{Effect Size:} Report Cohen's $d$ or rank-biserial correlation to quantify practical significance.
@@ -604,54 +598,15 @@ Results are reported as mean $\pm$ standard deviation across seeds.
 \subsection{Ablation Study Design}
 \label{sec:ablation}
 
-To isolate the contribution of each component, we conduct the following ablation studies:
+To isolate the contribution of Focal Loss hyperparameters and test hypothesis H2, we conduct the following ablation studies:
 
 \begin{enumerate}
-    \item \textbf{Loss Function Ablation:} Compare BCE, BPR, and Focal Loss on fixed NeuMF architecture to isolate the effect of the loss function.
+    \item \textbf{Focusing Parameter ($\gamma$) Ablation:} Vary $\gamma \in \{0, 0.5, 1.0, 2.0, 3.0\}$ with fixed $\alpha=0.25$ to analyze the focusing effect. Note that $\gamma=0$ reduces Focal Loss to standard $\alpha$-balanced BCE, serving as a direct comparison point.
 
-    \item \textbf{Focal Loss Component Ablation:}
-    \begin{itemize}
-        \item Vary $\gamma \in \{0, 0.5, 1.0, 2.0, 3.0\}$ with fixed $\alpha=0.25$ to analyze the focusing effect ($\gamma=0$ reduces to BCE).
-        \item Vary $\alpha \in \{0.25, 0.5, 0.75\}$ with fixed $\gamma=2.0$ to analyze the class-balancing effect.
-    \end{itemize}
-
-    \item \textbf{Architecture Ablation:} Test Focal Loss on GMF-only, MLP-only, and full NeuMF to determine architecture-specific effects.
-
-    \item \textbf{Dataset Ablation:} Compare Focal Loss improvements across ML-100K and ML-1M to analyze the correlation between imbalance ratio and performance gain.
-
-    \item \textbf{Negative Sampling Ratio Ablation:} To test H7 (sampling robustness), we train both NeuMF-BCE and NeuMF-FL across varying negative sampling ratios: 1:4 (standard), 1:10 (moderate), and 1:50 (high). This ablation tests whether Focal Loss can effectively filter noise when exposed to higher proportions of negative examples, maintaining performance where BCE-based training degrades. Computational constraints preclude testing the full 1:All ratio; we use 1:50 as a tractable upper bound that still represents a substantial increase in negative exposure.
+    \item \textbf{Class-Balancing Parameter ($\alpha$) Ablation:} Vary $\alpha \in \{0.25, 0.5, 0.75\}$ with fixed $\gamma=2.0$ to analyze the class-balancing effect on positive/negative sample weighting.
 \end{enumerate}
 
-Table~\ref{tab:ablation-matrix} summarizes the ablation configurations. Table~\ref{tab:sampling-ablation} presents the negative sampling ratio experimental design.
-
-\begin{table}[h]
-\centering
-\caption{Ablation study configuration matrix}
-\label{tab:ablation-matrix}
-\begin{tabular}{lccc}
-\hline
-\textbf{Study} & \textbf{BCE} & $\alpha$\textbf{-BCE} & \textbf{Focal Loss} \\
-\hline
-$\gamma$ effect & $\gamma=0$ & $\gamma=0$ & $\gamma \in \{0.5, 1, 2, 3\}$ \\
-$\alpha$ effect & $\alpha=1$ & $\alpha \in \{0.25, 0.5, 0.75\}$ & $\alpha \in \{0.25, 0.5, 0.75\}$ \\
-\hline
-\end{tabular}
-\end{table}
-
-\begin{table}[h]
-\centering
-\caption{Negative sampling ratio ablation design}
-\label{tab:sampling-ablation}
-\begin{tabular}{lccc}
-\hline
-\textbf{Sampling Ratio} & \textbf{Neg:Pos} & \textbf{NeuMF-BCE} & \textbf{NeuMF-FL} \\
-\hline
-Standard & 1:4 & Baseline & Baseline \\
-Moderate & 1:10 & Test & Test \\
-High & 1:50 & Test & Test \\
-\hline
-\end{tabular}
-\end{table}
+These ablations are conducted on NeuMF using the ML-1M dataset, which provides sufficient scale for meaningful hyperparameter sensitivity analysis.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
