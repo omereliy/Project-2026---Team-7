@@ -414,7 +414,7 @@ Focal Loss reduces the hard positive's contribution by only $\sim$8$\times$, com
 This work makes the following contributions:
 \begin{enumerate}
     \item \textbf{Systematic Evaluation of Focal Loss for General-Purpose Recommendation:} Unlike prior work applying Focal Loss to specialized domains~\cite{meng2022weighted}, we evaluate its effectiveness on standard recommendation benchmarks with implicit feedback.
-    \item \textbf{Architecture-Agnostic Analysis:} By testing Focal Loss on both MF \guy{No need to check Focal Loss on MF, MF should be one of  the  baseline methods and } and NeuMF, we determine whether performance gains are specific to neural architectures or generalize across model complexity levels.
+    \item \textbf{Architecture-Agnostic Analysis:} By testing Focal Loss on both MF \guy{No need to check Focal Loss on MF, MF should be one of  the  baseline methods} and NeuMF, we determine whether performance gains are specific to neural architectures or generalize across model complexity levels.
     \item \textbf{Reconciliation with Prior Findings:} Building on Rendle et al.'s~\cite{rendle2020neural} observation that loss function choice may matter more than architecture, we investigate whether Focal Loss can improve both MF and NCF, potentially reducing the performance gap between them.
     \item \textbf{Comprehensive Comparison with Traditional Methods:} We benchmark Focal Loss-enhanced models against traditional collaborative filtering baselines (KNN, SVD) to contextualize improvements within the broader recommendation landscape.
 \end{enumerate}
@@ -436,9 +436,8 @@ We formulate the following falsifiable hypotheses:
     \item[H2 (Focal Loss improves MF):] Matrix Factorization trained with Focal Loss achieves statistically significantly higher ranking metrics compared to MF trained with BPR loss.
     \item[H3 (Neural methods outperform traditional):] NeuMF with Focal Loss outperforms traditional collaborative filtering methods (KNN, SVD) on ranking metrics.
     \item[H4 (Architecture gap reduction):] The performance gap between NeuMF and MF decreases when both are trained with Focal Loss compared to their respective default losses.
-    \item[H5 (Optimal focusing parameter):] There exists an optimal value of the focusing parameter $\gamma$ in the range $[0.5, 3.0]$ that maximizes recommendation performance.
-    \item[H6 (Imbalance sensitivity):] Focal Loss provides larger relative improvements on datasets with higher class imbalance ratios.
-    \item[H7 (Sampling robustness):] Focal Loss maintains stable performance across varying negative sampling ratios (1:4, 1:10, 1:50), while BCE-trained models exhibit performance degradation as the ratio increases due to being overwhelmed by easy negatives.
+   
+    
 \end{description}
 
 \subsection{Datasets}
