@@ -50,7 +50,7 @@ on Autonomous Agents and Multiagent Systems (AAMAS 2025)}{May 19 -- 23, 2025}
 
 %%% Use this command to specify the title of your paper.
 
-\title[Focal Loss for NCF]{A Comparative Analysis of Neural Collaborative Filtering and Standard Recommendation Systems using Focal Loss} % Change the title
+\title[Focal Loss for NCF]{A Comparative Analysis of Neural Collaborative Filtering and Standard Recommendation Systems using Focal Loss} 
 
 %%% Provide names, affiliations, and email addresses for all authors.
 
@@ -85,6 +85,7 @@ on Autonomous Agents and Multiagent Systems (AAMAS 2025)}{May 19 -- 23, 2025}
 %%% Use this environment to specify a short abstract for your paper.
 
 \begin{abstract}
+\rotem{Need to change the title}
 Neural Collaborative Filtering (NCF) models trained on implicit feedback face a fundamental challenge: the extreme class imbalance between observed interactions (positives) and unobserved items (negatives), with ratios often exceeding 20:1. Standard approaches address this through heuristic negative sampling, which discards most data and treats all samples equally regardless of prediction confidence. This work investigates Focal Loss---a dynamically weighted loss function that automatically down-weights well-classified examples---as a principled alternative. Unlike prior applications of Focal Loss in specialized domains that confound the loss function with complex graph architectures and side information, we provide a controlled evaluation on standard recommendation benchmarks (MovieLens 100K and 1M) using vanilla Matrix Factorization and NeuMF architectures. We introduce a robustness study testing whether Focal Loss maintains performance across varying negative sampling ratios (1:4, 1:10, 1:50) where traditional BCE-trained models are expected to degrade. Our experimental design includes comprehensive ablation studies isolating the contributions of the focusing parameter $\gamma$ and class-balancing parameter $\alpha$, providing insights into loss function design for implicit feedback recommendation.
 \end{abstract}
 
