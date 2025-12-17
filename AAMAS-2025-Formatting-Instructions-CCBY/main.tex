@@ -85,7 +85,7 @@ on Autonomous Agents and Multiagent Systems (AAMAS 2025)}{May 19 -- 23, 2025}
 %%% Use this environment to specify a short abstract for your paper.
 
 \begin{abstract}
-\rotem{Need to change the title}
+\rotem{Need to change the title of this research}
 Neural Collaborative Filtering (NCF) models trained on implicit feedback face a fundamental challenge: the extreme class imbalance between observed interactions (positives) and unobserved items (negatives), with ratios often exceeding 20:1. Standard approaches address this through heuristic negative sampling, which discards most data and treats all samples equally regardless of prediction confidence. This work investigates Focal Loss---a dynamically weighted loss function that automatically down-weights well-classified examples---as a principled alternative. Unlike prior applications of Focal Loss in specialized domains that confound the loss function with complex graph architectures and side information, we provide a controlled evaluation on standard recommendation benchmarks (MovieLens 100K and 1M) using vanilla Matrix Factorization and NeuMF architectures. We introduce a robustness study testing whether Focal Loss maintains performance across varying negative sampling ratios (1:4, 1:10, 1:50) where traditional BCE-trained models are expected to degrade. Our experimental design includes comprehensive ablation studies isolating the contributions of the focusing parameter $\gamma$ and class-balancing parameter $\alpha$, providing insights into loss function design for implicit feedback recommendation.
 \end{abstract}
 
@@ -414,7 +414,7 @@ Focal Loss reduces the hard positive's contribution by only $\sim$8$\times$, com
 This work makes the following contributions:
 \begin{enumerate}
     \item \textbf{Systematic Evaluation of Focal Loss for General-Purpose Recommendation:} Unlike prior work applying Focal Loss to specialized domains~\cite{meng2022weighted}, we evaluate its effectiveness on standard recommendation benchmarks with implicit feedback.
-    \item \textbf{Architecture-Agnostic Analysis:} By testing Focal Loss on both MF and NeuMF, we determine whether performance gains are specific to neural architectures or generalize across model complexity levels.
+    \item \textbf{Architecture-Agnostic Analysis:} By testing Focal Loss on both MF \guy{No need to check Focal Loss on MF, MF should be one of  the  baseline methods and } and NeuMF, we determine whether performance gains are specific to neural architectures or generalize across model complexity levels.
     \item \textbf{Reconciliation with Prior Findings:} Building on Rendle et al.'s~\cite{rendle2020neural} observation that loss function choice may matter more than architecture, we investigate whether Focal Loss can improve both MF and NCF, potentially reducing the performance gap between them.
     \item \textbf{Comprehensive Comparison with Traditional Methods:} We benchmark Focal Loss-enhanced models against traditional collaborative filtering baselines (KNN, SVD) to contextualize improvements within the broader recommendation landscape.
 \end{enumerate}
