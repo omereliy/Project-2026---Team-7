@@ -16,6 +16,7 @@
 \usepackage{amsmath}
 \usepackage{algorithm}
 \usepackage{algorithmic}
+\usepackage{tabularx}
 
 
 %%% visual coloring for comments with distinct colors per entity for adding notes, todos and reviews necessary to be visualized on pdf.ß
@@ -440,14 +441,15 @@ We conduct experiments on two widely-used benchmark datasets from the MovieLens 
 \centering
 \caption{Dataset statistics after preprocessing}
 \label{tab:datasets}
-\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lrrrrr@{}}
+\small
+\begin{tabularx}{\columnwidth}{@{}l*{5}{>{\raggedleft\arraybackslash}X}@{}}
 \hline
 \textbf{Dataset} & \textbf{Users} & \textbf{Items} & \textbf{Interactions} & \textbf{Density} & \textbf{Imbalance} \\
 \hline
 ML-100K & 943 & 1,682 & 100,000 & 6.30\% & 14.9:1 \\
 ML-1M & 6,040 & 3,706 & 1,000,209 & 4.47\% & 21.4:1 \\
 \hline
-\end{tabular*}
+\end{tabularx}
 \end{table}
 
 \textbf{Data Preprocessing:} Following standard practice for implicit feedback evaluation~\cite{he2017ncf}, we apply the following preprocessing steps:
@@ -502,18 +504,19 @@ We compare the following models, summarized in Table~\ref{tab:models}. PopRank s
 \centering
 \caption{Models evaluated in experiments}
 \label{tab:models}
-\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}llll@{}}
+\small
+\begin{tabularx}{\columnwidth}{@{}lllX@{}}
 \hline
-\textbf{Model} & \textbf{Type} & \textbf{Architecture} & \textbf{Loss Functions} \\
+\textbf{Model} & \textbf{Type} & \textbf{Architecture} & \textbf{Loss} \\
 \hline
 PopRank & Non-personalized & Popularity ranking & N/A \\
-KNN-Item & Traditional & Item-based neighborhood & Cosine similarity \\
-KNN-User & Traditional & User-based neighborhood & Cosine similarity \\
+KNN-Item & Traditional & Item-based neighborhood & Cosine \\
+KNN-User & Traditional & User-based neighborhood & Cosine \\
 SVD & Traditional & Matrix factorization & MSE \\
 MF & Neural & Dot-product embeddings & BCE, BPR, FL \\
 NeuMF & Neural & GMF + MLP hybrid & BCE, BPR, FL \\
 \hline
-\end{tabular*}
+\end{tabularx}
 \end{table}
 
 
@@ -526,23 +529,25 @@ Table~\ref{tab:hyperparams-traditional} and Table~\ref{tab:hyperparams-neural} p
 \centering
 \caption{Hyperparameter search space for traditional methods}
 \label{tab:hyperparams-traditional}
-\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}llll@{}}
+\small
+\begin{tabularx}{\columnwidth}{@{}llXl@{}}
 \hline
 \textbf{Parameter} & \textbf{Model} & \textbf{Values} & \textbf{Rationale} \\
 \hline
 $K$ (neighbors) & KNN & \{10, 20, 40, 80\} & Neighborhood size \\
 Similarity & KNN & \{cosine, pearson\} & Distance metric \\
-Latent factors & SVD & \{32, 64, 128\} & Embedding dimension \\
+Latent factors & SVD & \{32, 64, 128\} & Embedding dim. \\
 Regularization & SVD & \{0.001, 0.01, 0.1\} & Overfitting control \\
 \hline
-\end{tabular*}
+\end{tabularx}
 \end{table}
 
 \begin{table}[h]
 \centering
 \caption{Hyperparameter search space for neural methods}
 \label{tab:hyperparams-neural}
-\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lll@{}}
+\small
+\begin{tabularx}{\columnwidth}{@{}lXl@{}}
 \hline
 \textbf{Parameter} & \textbf{Values} & \textbf{Rationale} \\
 \hline
@@ -550,10 +555,10 @@ Embedding size & \{32, 64, 128\} & Model capacity \\
 MLP layers & \{[64,32], [128,64,32]\} & Network depth \\
 Learning rate & \{0.0001, 0.001, 0.01\} & Optimization speed \\
 Batch size & \{256, 512, 1024\} & GPU utilization \\
-$\gamma$ (focusing) & \{0, 0.5, 1.0, 2.0, 3.0\} & $\gamma=0$ reduces to BCE \\
-$\alpha$ (balancing) & \{0.25, 0.5, 0.75\} & Class weight balance \\
+$\gamma$ (focusing) & \{0, 0.5, 1.0, 2.0, 3.0\} & $\gamma{=}0$: BCE \\
+$\alpha$ (balancing) & \{0.25, 0.5, 0.75\} & Class weight \\
 \hline
-\end{tabular*}
+\end{tabularx}
 \end{table}
 
 Hyperparameters are tuned on the validation set using grid search. The best configuration is selected based on NDCG@10, and final results are reported on the held-out test set.
