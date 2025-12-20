@@ -440,14 +440,14 @@ We conduct experiments on two widely-used benchmark datasets from the MovieLens 
 \centering
 \caption{Dataset statistics after preprocessing}
 \label{tab:datasets}
-\begin{tabular}{lrrrrr}
+\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lrrrrr@{}}
 \hline
 \textbf{Dataset} & \textbf{Users} & \textbf{Items} & \textbf{Interactions} & \textbf{Density} & \textbf{Imbalance} \\
 \hline
 ML-100K & 943 & 1,682 & 100,000 & 6.30\% & 14.9:1 \\
 ML-1M & 6,040 & 3,706 & 1,000,209 & 4.47\% & 21.4:1 \\
 \hline
-\end{tabular}
+\end{tabular*}
 \end{table}
 
 \textbf{Data Preprocessing:} Following standard practice for implicit feedback evaluation~\cite{he2017ncf}, we apply the following preprocessing steps:
