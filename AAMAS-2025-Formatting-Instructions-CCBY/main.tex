@@ -496,14 +496,13 @@ Algorithm~\ref{alg:focal-ncf} presents the training procedure for NCF with Focal
 
 \subsection{Baseline Models}
 \label{sec:baselines}
-\omer{need to align the table, it overlaps with the 5.7 section header}
 We compare the following models, summarized in Table~\ref{tab:models}. PopRank serves as a non-personalized baseline that ranks items by global popularity (total interaction count), providing a lower bound that any personalized recommendation method should exceed.
 
 \begin{table}[h]
 \centering
 \caption{Models evaluated in experiments}
 \label{tab:models}
-\begin{tabular}{llll}
+\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}llll@{}}
 \hline
 \textbf{Model} & \textbf{Type} & \textbf{Architecture} & \textbf{Loss Functions} \\
 \hline
@@ -514,7 +513,7 @@ SVD & Traditional & Matrix factorization & MSE \\
 MF & Neural & Dot-product embeddings & BCE, BPR, FL \\
 NeuMF & Neural & GMF + MLP hybrid & BCE, BPR, FL \\
 \hline
-\end{tabular}
+\end{tabular*}
 \end{table}
 
 
@@ -527,7 +526,7 @@ Table~\ref{tab:hyperparams-traditional} and Table~\ref{tab:hyperparams-neural} p
 \centering
 \caption{Hyperparameter search space for traditional methods}
 \label{tab:hyperparams-traditional}
-\begin{tabular}{llll}
+\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}llll@{}}
 \hline
 \textbf{Parameter} & \textbf{Model} & \textbf{Values} & \textbf{Rationale} \\
 \hline
@@ -536,14 +535,14 @@ Similarity & KNN & \{cosine, pearson\} & Distance metric \\
 Latent factors & SVD & \{32, 64, 128\} & Embedding dimension \\
 Regularization & SVD & \{0.001, 0.01, 0.1\} & Overfitting control \\
 \hline
-\end{tabular}
+\end{tabular*}
 \end{table}
 
 \begin{table}[h]
 \centering
 \caption{Hyperparameter search space for neural methods}
 \label{tab:hyperparams-neural}
-\begin{tabular}{lll}
+\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lll@{}}
 \hline
 \textbf{Parameter} & \textbf{Values} & \textbf{Rationale} \\
 \hline
@@ -554,7 +553,7 @@ Batch size & \{256, 512, 1024\} & GPU utilization \\
 $\gamma$ (focusing) & \{0, 0.5, 1.0, 2.0, 3.0\} & $\gamma=0$ reduces to BCE \\
 $\alpha$ (balancing) & \{0.25, 0.5, 0.75\} & Class weight balance \\
 \hline
-\end{tabular}
+\end{tabular*}
 \end{table}
 
 Hyperparameters are tuned on the validation set using grid search. The best configuration is selected based on NDCG@10, and final results are reported on the held-out test set.
