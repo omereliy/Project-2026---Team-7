@@ -1,0 +1,662 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%% LaTeX Template for AAMAS-2025 (based on sample-sigconf.tex)
+%%% Prepared by the AAMAS-2025 Program Chairs based on the version from AAMAS-2025.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%% Start your document with the \documentclass command.
+
+%%%% For camera-ready, use this
+\documentclass[sigconf]{aamas}
+
+%%% Load required packages here (note that many are included already).
+
+\usepackage{balance} % for balancing columns on the final page
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{tabularx}
+
+
+%%% visual coloring for comments with distinct colors per entity for adding notes, todos and reviews necessary to be visualized on pdf.ß
+\newif\ifaddcomments
+\addcommentstrue % Uncomment this line to remove the user comments
+
+
+\newcommand{\todo}[1]{\ifaddcomments{\textcolor{red}{[TODO: #1]}}\fi}
+\newcommand{\omer}[1]{\ifaddcomments{\textcolor{brown}{[Omer: #1]}}\fi}
+\newcommand{\dvir}[1]{\ifaddcomments{\textcolor{blue}{[Dvir: #1]}}\fi}
+\newcommand{\guy}[1]{\ifaddcomments{\textcolor{purple}{[Guy: #1]}}\fi}
+\newcommand{\rotem}[1]{\ifaddcomments{\textcolor{green}{[Rotem: #1]}}\fi}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%% AAMAS-2025 copyright block (do not change!)
+
+\setcopyright{ifaamas}
+\acmConference[AAMAS '25]{Proc.\@ of the 24th International Conference
+on Autonomous Agents and Multiagent Systems (AAMAS 2025)}{May 19 -- 23, 2025}
+{Detroit, Michigan, USA}{A.~El~Fallah~Seghrouchni, Y.~Vorobeychik, S.~Das, A.~Nowe (eds.)}
+\copyrightyear{2025}
+\acmYear{2025}
+\acmDOI{}
+\acmPrice{}
+\acmISBN{}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%% Use this command to specify your submission number.
+
+\acmSubmissionID{7}
+
+%%% Use this command to specify the title of your paper.
+
+\title[Focal Loss for NCF]{Addressing Class Imbalance in NCF with Focal Loss} 
+
+%%% Provide names, affiliations, and email addresses for all authors.
+
+\author{Rotem Even Zur, 208839183}
+\affiliation{
+  \institution{Ben Gurion University of the Negev}
+  \city{Beer Sheva}
+  \country{Israel}}
+\email{evenzro@post.bgu.ac.il}
+
+\author{Guy Kalati, 318366150}
+\affiliation{
+  \institution{Ben Gurion University of the Negev}
+  \city{Beer Sheva}
+  \country{Israel}}
+\email{guykalat@post.bgu.ac.il}
+
+\author{Dvir Chitrit, 206766818}
+\affiliation{
+  \institution{Ben Gurion University of the Negev}
+  \city{Beer Sheva}
+  \country{Israel}}
+\email{dvirchi@post.bgu.ac.il}
+
+\author{Omer Eliyahu, 206510828}
+\affiliation{
+  \institution{Ben Gurion University of the Negev}
+  \city{Beer Sheva}
+  \country{Israel}}
+\email{omereliy@post.bgu.ac.il}
+
+%%% Use this environment to specify a short abstract for your paper.
+
+\begin{abstract}
+%\rotem{Need to change the title of this research}
+% Neural Collaborative Filtering (NCF) models trained on implicit feedback face a fundamental challenge: the extreme class imbalance between observed interactions (positives) and unobserved items (negatives), with ratios often exceeding 20:1. Standard approaches address this through heuristic negative sampling, which discards most data and treats all samples equally regardless of prediction confidence. This work investigates Focal Loss\guy{Remove long dashes}; a-dynamically weighted loss function that automatically down-weights well-classified examples. Unlike prior applications of Focal Loss in specialized domains that confound the loss function with complex graph architectures and side information, we provide a controlled evaluation on standard recommendation benchmarks (MovieLens 100K and 1M) using vanilla Matrix Factorization and NeuMF architectures. We introduce a robustness study testing whether Focal Loss maintains performance across varying negative sampling ratios (1:4, 1:10, 1:50) where traditional BCE-trained models are expected to degrade. Our experimental design includes comprehensive ablation studies isolating the contributions of the focusing parameter $\gamma$ and class-balancing parameter $\alpha$, providing insights into loss function design for implicit feedback recommendation.
+\end{abstract}
+
+%%% Use this command to specify a few keywords describing your work.
+
+\keywords{recommender systems, collaborative filtering, neural collaborative filtering, matrix factorization, focal loss}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%% Include any author-defined commands here.
+
+\newcommand{\BibTeX}{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em\TeX}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+%%% The following commands remove the headers in your paper. For final
+%%% papers, these will be inserted during the pagination process.
+
+\pagestyle{fancy}
+\fancyhead{}
+
+%%% The next command prints the information defined in the preamble.
+
+\maketitle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Introduction}
+\label{sec:introduction}
+
+Recommender systems have become the cornerstone of modern digital platforms, guiding users through vast catalogs of products, content, and services. A user's failure to interact with an item does not necessarily indicate disinterest, it may simply reflect unawareness of the item's existence. This fundamental ambiguity, combined with the observation that users typically interact with only a small fraction of available items, creates a severe class imbalance problem: the ratio of unobserved to observed interactions routinely exceeds 20:1 and can surpass 100:1 in sparse datasets.
+
+Standard training objectives for neural recommendation models handle this imbalance through heuristic negative sampling, randomly selecting a small subset of unobserved items to serve as negative examples. While computationally efficient, this approach is statistically flawed. Binary Cross-Entropy (BCE) and Bayesian Personalized Ranking (BPR) losses treat all samples equally regardless of prediction confidence, causing easy negatives; items clearly irrelevant to a user; to dominate gradient updates. The model expends learning capacity on trivially classified examples while receiving insufficient signal from the challenging boundary cases that truly matter for recommendation quality. Hard negative mining strategies address this partially but introduce significant computational overhead and require careful tuning.%\guy{Maybe need to add how they address this and why its not good}
+
+This work proposes applying Focal Loss~\cite{lin2017focal}; a dynamically weighted loss function originally developed for dense object detection;to Neural Collaborative Filtering (NCF) as a principled alternative to heuristic sampling. Focal Loss introduces a modulating factor that automatically down-weights well-classified examples and focuses learning on hard cases where the model's predictions are uncertain. Critically, while Focal Loss has been applied to recommendation in specialized domains such as drug repositioning~\cite{meng2022weighted}, these applications confound the loss function with complex architectures including graph convolutions and bilinear aggregators, making it impossible to isolate the contribution of Focal Loss itself. Our work provides a controlled evaluation by applying Focal Loss to standard NCF architectures; Matrix Factorization (MF) and Neural Matrix Factorization (NeuMF); without additional architectural complexity.
+
+This paper makes the following contributions:
+\begin{itemize}
+    \item We provide a systematic evaluation of Focal Loss for collaborative filtering on standard implicit feedback benchmarks, demonstrating its effectiveness outside specialized bioinformatics domains.
+    \item We introduce a robustness study across negative sampling ratios (1:4, 1:10, 1:50), testing the hypothesis that Focal Loss can maintain performance when exposed to higher proportions of negative examples.
+    \item Building on Rendle et al.'s~\cite{rendle2020neural} observation that loss function choice may matter more than architectural complexity, we investigate whether Focal Loss can improve both MF and NeuMF, potentially reducing the performance gap between them.
+\end{itemize}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Background}
+\label{sec:background}
+
+Recommender systems are personalization technologies designed to help users navigate large information spaces by predicting which items are most relevant to them. Instead of showing identical content to every user, they tailor item rankings (movies, products, music, news, etc.) based on behavioral patterns and preference data. This personalized filtering reduces information overload and improves user satisfaction by presenting items with the highest estimated utility.
+
+Two core principles distinguish recommender systems from general information retrieval. First, a recommender system is personalized: its goal is to optimize the experience of one specific user rather than reflect a group consensus. Second, it operates over discrete, predefined options, meaning the system helps the user choose among known items rather than generate new content. These characteristics separate recommendation from traditional search engines, where results for a given query are typically the same regardless of who performs the search.
+
+Within this framework, one of the main recommendation approaches is \textbf{Collaborative Filtering (CF)}~\cite{sarwar2001item}. CF predicts user preferences by analyzing patterns of interactions across many users, assuming that people with similar behaviors prefer similar items. It is typically implemented either through memory-based methods, which use similarity measures like cosine similarity or Pearson correlation to find similar users or items, or through model-based methods that learn latent factors using techniques such as matrix factorization or clustering.
+
+\subsection{Traditional Methods: KNN and Matrix Factorization}
+\label{sec:traditional-methods}
+
+In practice, traditional recommender systems in industry often rely on neighborhood-based Collaborative Filtering methods such as k-nearest neighbors (KNN), as well as model-based approaches like matrix factorization using Singular Value Decomposition (SVD), which have proven effective and scalable for many real-world applications.
+
+\subsubsection{K-Nearest Neighbors (KNN)}
+
+K-Nearest Neighbors (KNN) is a simple and widely used algorithm that identifies the most similar items or users by comparing them through a similarity or distance measure, such as cosine similarity, Pearson correlation, or Euclidean distance~\cite{guo2003knn}. In recommender systems, KNN is typically applied in two ways: item-based KNN, where the system finds items similar to those a user already interacted with, and user-based KNN, which recommends items liked by users who have similar behavior patterns. By analyzing logs, clickstream data, or rating histories, KNN can classify items according to shared tastes and generate intuitive recommendations.
+
+Despite its interpretability and ease of implementation, KNN has notable limitations. Its performance depends strongly on the chosen value of $K$, and selecting this value often requires repeated experimentation. KNN also becomes less efficient as dataset size grows, since it must compute similarities across many users or items. High-dimensional or sparse data further degrades its accuracy, making dimensionality reduction techniques such as PCA or LDA useful in practice. Because of these challenges, KNN is effective in smaller or denser datasets but less suitable for large-scale recommendation tasks without additional optimization.
+
+\subsubsection{Singular Value Decomposition (SVD)}
+
+Singular Value Decomposition (SVD) is a matrix factorization technique that decomposes a matrix into three smaller matrices capturing its underlying structure~\cite{rahman2023extended}. In recommender systems, the user--item interaction matrix (ratings, clicks, purchases) is typically sparse, and SVD is used to uncover lower-dimensional latent factors that describe hidden relationships between users and items.
+
+By decomposing the interaction matrix into user factors, item factors, and singular values, SVD represents both users and items in a shared latent space where patterns such as preferences, item attributes, or genres naturally emerge. This allows the system to estimate missing ratings by reconstructing an approximated version of the matrix, even when data is incomplete. SVD is particularly useful in collaborative filtering because it reduces dimensionality, improves scalability, and can generate reasonable predictions for new or sparsely rated users and items by leveraging the learned latent factors. These advantages make SVD an effective model-based approach in many real-world recommendation systems.
+
+\subsection{Neural Collaborative Filtering (NCF)}
+\label{sec:ncf}
+
+Neural Collaborative Filtering (NCF) is a deep learning-based approach designed to enhance recommender systems by modeling the user--item interaction function with neural networks~\cite{he2017ncf}. Traditional collaborative filtering methods, such as matrix factorization, predict user preferences using the inner product between user and item latent embeddings, which constrains interactions to a linear form and limits the ability to capture complex, non-linear patterns observed in real data.
+
+He et al.\ introduced the NCF framework to overcome this limitation by replacing the fixed inner product with a learnable neural network that can approximate more expressive user--item interactions~\cite{he2017ncf}. In this framework, each user and item is represented by an embedding vector, and these embeddings are fed into neural architectures that output a predicted preference score. The main architectures proposed are:
+\begin{enumerate}
+    \item \textbf{Generalized Matrix Factorization (GMF):} Retains a multiplicative interaction between embeddings through element-wise multiplication followed by a linear layer, capturing a generalized multiplicative interaction.
+    \item \textbf{Multi-Layer Perceptron (MLP):} Applies multiple non-linear layers on concatenated embeddings to learn complex interaction patterns.
+    \item \textbf{NeuMF:} A hybrid model that combines GMF and MLP by concatenating their outputs before a final prediction layer, thereby exploiting both multiplicative and compositional interactions.
+\end{enumerate}
+
+The NCF framework is typically trained on implicit feedback data using loss functions such as binary cross-entropy with negative sampling and is evaluated with ranking metrics like Hit Rate and Normalized Discounted Cumulative Gain (NDCG). Empirical results show that deeper neural architectures within this framework improve recommendation accuracy, establishing NCF as a flexible and powerful paradigm for collaborative filtering.
+
+\subsubsection{Enhanced NCF with Convolutional Features}
+
+More recent work extends NCF by enriching the way user--item interactions are represented and processed within the neural network. Drammeh et al.\ propose an enhanced NCF architecture that combines convolutional neural networks (CNNs) with a hybrid feature selection mechanism to better capture complex structure in the interaction space~\cite{drammeh2023enhancing}.
+
+Their model constructs an outer-product interaction map from user and item embeddings and applies convolutions over this map to learn local and higher-order patterns that may not be captured by simple concatenation or element-wise multiplication. A dedicated hybrid feature selection module then emphasizes informative signals and suppresses noise, improving robustness on sparse datasets. These developments show that NCF can be progressively enhanced with more sophisticated neural components, which is directly relevant to our research as we evaluate NCF-based architectures for recommendation.
+
+\subsection{Addressing Class Imbalance: The Role of Focal Loss}
+\label{sec:focal-loss}
+
+Class imbalance is a fundamental challenge in recommendation systems. The number of unobserved user--item pairs (potential negatives) vastly outnumbers observed interactions (positives). This extreme imbalance causes two main problems: training becomes inefficient as most examples are easy negatives contributing little useful signal, and these easy negatives can overwhelm the loss function and dominate gradient updates, leading to suboptimal models that fail to learn meaningful patterns.
+
+Lin et al.~\cite{lin2017focal} proposed Focal Loss to address class imbalance by dynamically reshaping the standard cross-entropy loss. Traditional $\alpha$-balanced cross-entropy introduces a weighting factor $\alpha$ for the positive class and $1-\alpha$ for the negative class, which balances the importance of positive and negative examples but fails to differentiate between easy and hard examples within each class.
+
+The Focal Loss mechanism adds a modulating factor to down-weight well-classified examples, allowing the model to focus on hard, misclassified cases. The final formulation is:
+\begin{equation}
+FL(p_t) = -\alpha_t(1-p_t)^\gamma \log(p_t)
+\end{equation}
+where $p_t$ is the model's estimated probability for the ground-truth class, $\gamma \geq 0$ is the focusing parameter, and $\alpha_t$ is the class balancing weight.
+
+The focusing parameter $\gamma$ controls the strength of down-weighting: when $\gamma=0$, Focal Loss reduces to standard cross-entropy, and as $\gamma$ increases, the effect of the modulating factor strengthens. When an example is well-classified (high $p_t$), the factor $(1-p_t)^\gamma$ approaches zero, drastically reducing its loss contribution. For instance, with $\gamma=2$, an example with $p_t=0.9$ receives $100\times$ lower loss than standard cross-entropy, and at $p_t \approx 0.968$ it receives $1000\times$ lower loss. Conversely, when $p_t$ is low (misclassified example), the modulating factor stays near 1 and the loss remains substantial.
+
+The $\alpha$ parameter interacts with $\gamma$, and generally $\alpha$ should be decreased slightly as $\gamma$ increases because as easy negatives are down-weighted more aggressively, less emphasis needs to be placed on the positives. The method demonstrated stability across different hyperparameter values, with experiments showing consistent improvements for $\gamma \in [0.5, 5]$ and $\alpha \in [0.25, 0.75]$. Their best model achieved 39.1 AP on COCO (object detection dataset), surpassing both previous one-stage detectors and two-stage methods.%\guy{I dont sure that it need to be write as here with mention of COCO and the the actual score}
+
+This improvement indicates that by focusing the model's attention on hard examples rather than letting easy negatives dominate the training signal, the detector became better at identifying true objects while maintaining low false positive rates. Analysis of the loss distribution in a converged model revealed that with $\gamma=2$, the vast majority of total loss came from hard examples despite being a small fraction of all samples, confirming that the modulating factor successfully shifted the model's learning focus toward challenging cases that require more attention.
+
+For recommendation systems with implicit feedback, where class imbalance mirrors the challenges in dense object detection, Focal Loss offers a principled approach to handle the vast number of unobserved items without resorting to aggressive negative sampling or complex mining strategies. The loss function's ability to automatically down-weight easy negatives while maintaining gradient flow from hard examples could address a key limitation of neural collaborative filtering methods when trained on highly imbalanced datasets.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Related Work}
+\label{sec:related-work}
+
+Recent research has explored both architectural enhancements to collaborative filtering and advanced loss functions to handle data sparsity and imbalance. We survey relevant work in both directions.
+
+\subsection{Improvements to Traditional Collaborative Filtering}
+
+Rahman~\cite{rahman2023extended} addresses a central problem in recommendation systems: improving prediction accuracy in sparse and cold-start settings, where traditional collaborative filtering often fails to estimate missing ratings reliably. To tackle this, the study evaluates Adaptive KNN, which adjusts the number of neighbors based on local data density, and an SVD-based model that uses matrix factorization to better reconstruct incomplete user--item matrices. The results show that Adaptive KNN struggles with sparsity and imbalance, while SVD achieves noticeably lower MAE and RMSE values by capturing latent user--item structures more effectively. This connects directly to our research, as we also compare traditional CF models (KNN and SVD) with a more advanced approach. While the article improves performance by adding features and adaptive mechanisms, our work enhances accuracy by modifying the training process itself by using focal loss within a Neural Collaborative Filtering model to better handle sparse and imbalanced data.%\guy{This paragraph maybe not relevant with the new direction, they talk about KNN and SVD improvements}
+
+Airen and Agrawal~\cite{airen2022knn} systematically evaluate variations of the K-Nearest Neighbors algorithm, including KNN-Basic, KNN-WithMeans, KNN-WithZScore, and KNN-Baseline, combined with different similarity measures (cosine, MSD, Pearson, and Pearson-baseline) on the MovieLens 100K dataset. Their experiments show that normalization choices, bias adjustments, and similarity functions significantly impact error metrics (MAE, MSE, RMSE) and ranking-based measures, demonstrating how methodological variations within collaborative filtering models can meaningfully alter evaluation outcomes. This observation aligns with our research, where we examine how modifying the learning approach, specifically incorporating focal loss within a Neural Collaborative Filtering model, affects performance compared to standard CF baselines.
+
+\subsection{Neural Collaborative Filtering Architectures}
+
+The seminal work of He et al.~\cite{he2017ncf} systematically formulates Neural Collaborative Filtering as a modular neural framework for modeling user--item interactions. Their central contribution is to parameterize the interaction function $f(u, i)$ between user $u$ and item $i$ as a neural network operating on learned embeddings, rather than relying on a fixed inner product. The GMF model performs element-wise multiplication of user and item embeddings followed by a linear layer, capturing a generalized multiplicative interaction, while the MLP model concatenates the embeddings and passes them through multiple non-linear layers to learn complex interaction patterns. NeuMF combines these two branches by concatenating their outputs before a final prediction layer, thereby leveraging both linear-like and highly non-linear interactions. Experiments on large-scale implicit feedback datasets demonstrate that NeuMF consistently achieves superior top-$K$ recommendation performance compared to the individual GMF and MLP components, and that increasing the depth of the MLP improves model expressiveness and accuracy.
+
+Drammeh et al.~\cite{drammeh2023enhancing} extend the NCF framework by integrating convolutional feature extraction and hybrid feature selection into the interaction modeling process. Their model first creates an interaction map via the outer product of user and item embeddings, capturing pairwise relationships across all embedding dimensions, and then applies convolutional layers to this map to learn local and high-order interaction patterns. To address noise and redundancy in these high-dimensional representations, they introduce a hybrid feature selection module that combines pointwise convolutions, pooling operations, and gating mechanisms to highlight informative features while suppressing less useful ones. The architecture also retains a GMF-like branch, which provides a stable, lower-complexity interaction pathway that regularizes training and complements the more expressive convolutional branch.
+
+In their experiments on benchmark datasets such as MovieLens and Pinterest, Drammeh et al.\ report that their enhanced NCF model outperforms baseline NCF variants, including GMF, MLP, and NeuMF, in terms of ranking metrics like Hit Rate and NDCG as well as error-based metrics such as RMSE and MAE. However, they also note that this improved performance comes with increased computational cost due to the outer-product interaction maps and convolutional layers, underscoring a trade-off between accuracy and efficiency.%\guy{Need to check if it not too similar to the paragraphs on those papers in background - all section}
+
+\subsection{Revisiting NCF vs. Matrix Factorization}
+
+Despite the popularity of NCF, recent literature has re-evaluated the necessity of replacing the inner product with an MLP. Rendle et al.~\cite{rendle2020neural} critically re-examined the purported dominance of NCF over Matrix Factorization (MF), demonstrating that a simple dot product, when trained with appropriate hyperparameter tuning and regularization, matches or exceeds the performance of the MLP-based NCF. This finding challenges the assumption that non-linear neural architectures are inherently superior for capturing user--item interactions and suggests that earlier reported performance gaps were likely due to suboptimal benchmarking of MF baselines. Rendle et al.\ argue that the MLP in NCF is difficult to optimize and does not necessarily learn a better interaction function than the dot product. Their findings imply that model architecture (MLP vs.\ Dot Product) may not be the sole determinant of accuracy.
+
+In the context of our research, Rendle's insight shifts the optimization focus from model architecture to the training objective itself. Since the choice of interaction function is not the sole determinant of accuracy, we investigate whether addressing the fundamental problem of class imbalance via Focal Loss provides a more significant performance gain. These findings suggest that the bottleneck in recommendation quality may not be architectural but rather lies in the training objective itself. Our work builds on this insight by applying Focal Loss to both MF and NCF, testing the hypothesis that a better-calibrated loss function can improve learning from hard negatives regardless of the underlying architectural complexity.
+
+\subsection{Loss Function Innovations for Recommendation}
+
+A parallel line of research focuses on improving the training objective rather than the model architecture, which is the primary focus of this work.
+
+The foundational work on pairwise ranking for implicit feedback is Bayesian Personalized Ranking (BPR), proposed by Rendle et al.~\cite{rendle2009bpr}. BPR derives a maximum posterior estimator for personalized ranking and introduces a pairwise loss function that directly optimizes for the ranking of items. The key insight is that for implicit feedback data, the goal is not to predict absolute ratings but to correctly order items by user preference. BPR constructs training data as triples $(u, i, j)$, indicating that user $u$ prefers item $i$ over item $j$, and optimizes the model using stochastic gradient descent with bootstrap sampling. This pairwise approach became a standard baseline for recommendation systems with implicit feedback and established the importance of choosing loss functions tailored to the recommendation task rather than adapting general classification losses.
+
+While Focal Loss was originally designed for computer vision tasks, the class imbalance problem it addresses is equally prevalent in recommendation systems. In collaborative filtering, the number of items a user has not interacted with (implicit negatives) far exceeds the number of items they have rated or consumed (positives), creating a similar imbalance challenge. Meng et al.~\cite{meng2022weighted} presented an application of Focal Loss to neural collaborative filtering in the context of drug-disease association prediction.
+
+The authors proposed DRWBNCF (Drug Repositioning using Weighted Bilinear Neural Collaborative Filtering), which frames drug repositioning as a recommendation problem where drugs are recommended for diseases based on known associations. The method constructs three networks: a drug-disease association network, a drug-drug similarity network, and a disease-disease similarity network, using only $k$-nearest neighbors rather than all similar neighbors to filter noisy information. The architecture consists of two main components: an integration component that uses a novel weighted bilinear graph convolution operation to aggregate pairwise interactions between neighbors, and a prediction component that employs a multi-layer perceptron optimized with $\alpha$-balanced Focal Loss and graph regularization.
+
+The key innovation relevant to collaborative filtering is the application of Focal Loss to handle implicit feedback data. In their formulation, known drug-disease associations serve as positive samples while unobserved pairs are treated as negative samples. The Focal Loss function differentiates between easy negative samples and hard positive samples, addressing the false negative problem inherent in implicit feedback where an unobserved interaction does not necessarily indicate negative preference. The authors used $\gamma=2$ and $\alpha=0.5$, with results showing the hyperparameters maintained effectiveness across different dataset configurations. DRWBNCF achieved the best performance on three drug-disease association datasets in 10-fold cross-validation, with an average AUPR of 0.4688, representing a 5.7\% improvement over the next best method.%\guy{Also in here myabe need to rephrase it to be without the actual numbers}
+
+However, the DRWBNCF approach presents several limitations that prevent direct conclusions about the efficacy of focal loss. First, the architecture confounds multiple innovations; the weighted bilinear graph convolution, the $k$-nearest neighbor filtering, the multi-network integration, and Focal Loss;making it impossible to attribute performance gains to any single component. The authors do not provide an ablation study that compares DRWBNCF with and without Focal Loss. Second, the domain differs substantially from general consumer recommendation: the Fdataset contains only 593 drugs and 313 diseases, orders of magnitude smaller than standard recommendation systems benchmarks with a lot more users and items. Third, the reliance on rich side information (chemical structures, disease semantics) limits applicability to settings where only interaction data is available. Our work addresses these gaps by applying Focal Loss to standard NCF architectures on standard benchmarks, providing a controlled evaluation that isolates the loss function's contribution.
+
+Wu et al.~\cite{wu2023effectiveness} investigated an alternative approach called \textbf{Sampled Softmax (SSM)} loss. Sampled Softmax loss reformulates the recommendation problem as a multi-class classification where the model predicts which item a user will interact with from the entire item catalog. Rather than computing softmax over all items (computationally prohibitive for large catalogs), SSM approximates the full softmax by sampling a subset of negative items. The loss inherently handles class imbalance through its sampling mechanism and temperature scaling, which naturally down-weights easy examples similar to Focal Loss's modulating factor.
+
+The authors identified three model-independent advantages of SSM loss for recommendation. First, SSM mitigates popularity bias by adjusting item representations based on their frequency in the training data, following an Inverse Propensity Weighting principle. Second, SSM functions as a hard negative mining strategy because the sampling process tends to select more challenging negatives as training progresses. Third, SSM directly optimizes ranking metrics by maximizing the gap between positive and negative items.
+
+Experiments on four benchmark datasets showed SSM loss achieved notable improvements in NDCG@20 over Binary Cross-Entropy (BCE) and Bayesian Personalized Ranking (BPR) losses. Critically, SSM significantly improved long-tail item coverage. On the Yelp dataset, the least popular item group (containing 35.7\% of items) contributed less than 3\% of total Recall when using BCE, but SSM increased exposure of these long-tail items.
+
+\subsection{Summary and Research Gap}
+
+While Meng et al.\ validated Focal Loss in a specialized bioinformatics domain and Wu et al.\ proposed sampling-based alternatives such as SSM, there remains a need for a direct, controlled evaluation of Focal Loss in general-purpose recommendation. Existing applications confound Focal Loss with complex architectural innovations, side information, or domain-specific adaptations. This research bridges that gap by providing an ablation-style study: applying Focal Loss to standard NCF architectures (MF and NeuMF) on standard implicit feedback benchmarks, without additional architectural complexity. This design isolates the loss function's contribution, enabling conclusions about whether Focal Loss alone is sufficient to address the class imbalance problem in recommender systems, and whether its benefits are architecture-agnostic.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Methodology}
+\label{sec:methodology}
+
+This section presents our proposed approach for applying Focal Loss to Neural Collaborative Filtering. We formalize the recommendation problem, describe how Focal Loss addresses class imbalance in implicit feedback settings, and detail the model architectures under investigation.
+
+\subsection{Problem Formulation}
+\label{sec:problem-formulation}
+
+Consider a recommendation scenario with $M$ users and $N$ items. The user-item interaction data is represented as a binary matrix $\mathbf{Y} \in \{0,1\}^{M \times N}$, where each entry is defined as:
+\begin{equation}
+y_{ui} =
+\begin{cases}
+1, & \text{if interaction between user } u \text{ and item } i \text{ is observed} \\
+0, & \text{otherwise}
+\end{cases}
+\end{equation}
+
+Let $\mathcal{O} = \{(u,i) : y_{ui} = 1\}$ denote the set of observed interactions. In implicit feedback settings, a value of 1 indicates an observed interaction (e.g., click, purchase, view), while 0 indicates either no preference or an unobserved interaction. This formulation inherently creates a severe class imbalance problem, as the number of unobserved pairs vastly exceeds observed interactions. The class imbalance ratio $\rho$ is defined as:
+\begin{equation}
+\rho = \frac{|\{(u,i) : y_{ui} = 0\}|}{|\{(u,i) : y_{ui} = 1\}|} = \frac{M \times N - |\mathcal{O}|}{|\mathcal{O}|}
+\label{eq:imbalance-ratio}
+\end{equation}
+
+For typical recommendation datasets, $\rho$ ranges from 20:1 to over 100:1, meaning negative samples dominate the training data by orders of magnitude. The recommendation task is to learn a scoring function $\hat{y}_{ui} = f(u, i; \Theta)$ that predicts the likelihood of user $u$ interacting with item $i$, where $\Theta$ represents model parameters. The objective is to rank items such that those with higher predicted scores are more likely to be relevant to the user.
+
+\subsection{Focal Loss for Collaborative Filtering}
+\label{sec:fl-cf}
+
+Standard approaches to training recommendation models on implicit feedback use Binary Cross-Entropy (BCE) loss with negative sampling:
+\begin{equation}
+\mathcal{L}_{BCE} = -\frac{1}{|\mathcal{D}|} \sum_{(u,i,y) \in \mathcal{D}} \left[ y \log(\hat{y}_{ui}) + (1-y) \log(1 - \hat{y}_{ui}) \right]
+\label{eq:bce}
+\end{equation}
+where $\mathcal{D}$ contains positive samples from $\mathcal{O}$ paired with randomly sampled negatives. An alternative is Bayesian Personalized Ranking (BPR) loss~\cite{rendle2009bpr}, which optimizes pairwise rankings:
+\begin{equation}
+\mathcal{L}_{BPR} = -\frac{1}{|\mathcal{D}^+|} \sum_{(u,i,j) \in \mathcal{D}^+} \log \sigma(\hat{y}_{ui} - \hat{y}_{uj})
+\label{eq:bpr}
+\end{equation}
+where $(u,i,j)$ denotes a triple indicating user $u$ prefers item $i$ over item $j$, and $\sigma(\cdot)$ is the sigmoid function.
+
+Both BCE and BPR treat all samples equally regardless of prediction confidence. To understand why this is problematic, consider the gradient dynamics during training. For a correctly classified negative example where the model predicts $\hat{y} = 0.05$ (low relevance), the BCE loss contribution is $-\log(1 - 0.05) = -\log(0.95) \approx 0.05$. While individually small, when aggregated across millions of such easy negatives; which constitute the vast majority of training data; the cumulative loss and gradient signal from trivial examples overwhelms the contribution from the rare but informative hard positives and challenging negatives. The model effectively spends most of its learning capacity maintaining low scores for items the user obviously has no interest in, rather than refining the decision boundary for ambiguous cases.
+
+Focal Loss~\cite{lin2017focal} addresses this fundamental limitation by introducing a modulating factor that dynamically down-weights well-classified examples:
+\begin{equation}
+\mathcal{L}_{FL} = -\frac{1}{|\mathcal{D}|} \sum_{(u,i,y) \in \mathcal{D}} \alpha_t (1 - p_t)^\gamma \log(p_t)
+\label{eq:focal-loss}
+\end{equation}
+where $p_t$ represents the model's estimated probability for the ground-truth class:
+\begin{equation}
+p_t =
+\begin{cases}
+\hat{y}_{ui}, & \text{if } y = 1 \text{ (positive sample)} \\
+1 - \hat{y}_{ui}, & \text{if } y = 0 \text{ (negative sample)}
+\end{cases}
+\label{eq:pt}
+\end{equation}
+and $\alpha_t$ is the class-dependent balancing weight:
+\begin{equation}
+\alpha_t =
+\begin{cases}
+\alpha, & \text{if } y = 1 \\
+1 - \alpha, & \text{if } y = 0
+\end{cases}
+\end{equation}
+
+The focusing parameter $\gamma \geq 0$ controls the rate of down-weighting. When $\gamma = 0$, Focal Loss reduces to standard $\alpha$-balanced cross-entropy. As $\gamma$ increases, the modulating factor $(1-p_t)^\gamma$ more aggressively reduces the contribution of well-classified examples. The behavior of this factor is:
+\begin{equation}
+(1 - p_t)^\gamma \rightarrow
+\begin{cases}
+\approx 0, & \text{if } p_t \rightarrow 1 \text{ (well-classified)} \\
+\approx 1, & \text{if } p_t \rightarrow 0 \text{ (misclassified)}
+\end{cases}
+\end{equation}
+
+This mechanism automatically shifts the training focus toward hard examples that the model struggles to classify correctly, which is particularly valuable in recommendation settings where the vast majority of negative samples are trivially easy to identify.
+
+\subsection{Model Architectures}
+\label{sec:model-architectures}
+
+\subsubsection{Matrix Factorization (MF)}
+
+Matrix Factorization represents users and items as dense embedding vectors in a shared latent space. For user $u$ with embedding $\mathbf{p}_u \in \mathbb{R}^d$ and item $i$ with embedding $\mathbf{q}_i \in \mathbb{R}^d$, the predicted interaction score is:
+\begin{equation}
+\hat{y}_{ui}^{MF} = \sigma(\mathbf{p}_u^\top \mathbf{q}_i + b_u + b_i + b)
+\label{eq:mf}
+\end{equation}
+where $b_u$, $b_i$, and $b$ are user, item, and global bias terms respectively, and $\sigma(\cdot)$ is the sigmoid function.
+
+\subsubsection{Neural Matrix Factorization (NeuMF)}
+
+NeuMF~\cite{he2017ncf} combines two complementary interaction modeling approaches. The Generalized Matrix Factorization (GMF) component captures multiplicative interactions:
+\begin{equation}
+\mathbf{h}^{GMF} = \mathbf{p}_u^G \odot \mathbf{q}_i^G
+\label{eq:gmf}
+\end{equation}
+where $\odot$ denotes element-wise multiplication and $\mathbf{p}_u^G$, $\mathbf{q}_i^G$ are GMF-specific embeddings.
+
+The Multi-Layer Perceptron (MLP) component learns non-linear interactions through concatenation and deep layers:
+\begin{equation}
+\mathbf{z}_0 = [\mathbf{p}_u^M ; \mathbf{q}_i^M], \quad \mathbf{z}_l = \text{ReLU}(\mathbf{W}_l \mathbf{z}_{l-1} + \mathbf{b}_l), \quad l = 1, \ldots, L
+\label{eq:mlp}
+\end{equation}
+where $[\cdot ; \cdot]$ denotes concatenation, $\mathbf{p}_u^M$, $\mathbf{q}_i^M$ are MLP-specific embeddings, and $L$ is the number of hidden layers.
+
+The final NeuMF prediction combines both branches:
+\begin{equation}
+\hat{y}_{ui}^{NeuMF} = \sigma\left(\mathbf{w}^\top [\mathbf{h}^{GMF} ; \mathbf{z}_L] + b\right)
+\label{eq:neumf}
+\end{equation}
+where $\mathbf{w}$ is a learnable weight vector for the final prediction layer.
+
+\subsection{Illustrative Example: Effect of Focal Loss}
+\label{sec:toy-example}
+
+To illustrate how Focal Loss rebalances learning toward informative examples, consider a toy recommendation scenario with 5 users and 10 items, shown in Table~\ref{tab:toy-matrix}.
+
+\begin{table}[h]
+\centering
+\caption{Toy user-item interaction matrix (1 = observed interaction)}
+\label{tab:toy-matrix}
+\begin{tabular}{l|cccccccccc}
+\hline
+& $i_1$ & $i_2$ & $i_3$ & $i_4$ & $i_5$ & $i_6$ & $i_7$ & $i_8$ & $i_9$ & $i_{10}$ \\
+\hline
+$u_1$ & 1 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+$u_2$ & 0 & 1 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 \\
+$u_3$ & 1 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+$u_4$ & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 1 \\
+$u_5$ & 0 & 1 & 0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 \\
+\hline
+\end{tabular}
+\end{table}
+
+This matrix contains 10 positive interactions and 40 negative entries, yielding an imbalance ratio $\rho = 4:1$. Consider two training examples after several epochs of training:
+
+\textbf{Easy negative sample} $(u_1, i_{10})$: The model correctly predicts low relevance with $\hat{y} = 0.05$, giving $p_t = 1 - 0.05 = 0.95$. The loss contributions are:
+\begin{align}
+\mathcal{L}_{BCE} &= -\log(0.95) = 0.051 \\
+\mathcal{L}_{FL} &= -(1-\alpha)(1-0.95)^2 \log(0.95) = 0.75 \times 0.0025 \times 0.051 \approx 0.0001
+\end{align}
+using $\gamma=2$ and $\alpha=0.25$. Focal Loss reduces this contribution by approximately $500\times$.
+
+\textbf{Hard positive sample} $(u_1, i_1)$: The model struggles to identify this positive with $\hat{y} = 0.3$, giving $p_t = 0.3$. The loss contributions are:
+\begin{align}
+\mathcal{L}_{BCE} &= -\log(0.3) = 1.204 \\
+\mathcal{L}_{FL} &= -\alpha(1-0.3)^2 \log(0.3) = 0.25 \times 0.49 \times 1.204 \approx 0.147
+\end{align}
+
+Focal Loss reduces the hard positive's contribution by only $\sim$8$\times$, compared to $\sim$500$\times$ for the easy negative. This differential down-weighting shifts gradient mass toward hard examples, enabling the model to learn more effectively from the limited positive signals and challenging edge cases rather than wasting capacity on trivially classified negatives.
+
+\subsection{Novel Contributions}
+\label{sec:contributions}
+
+This work makes the following contributions:
+\begin{enumerate}
+    \item \textbf{Systematic Evaluation of Focal Loss for General-Purpose Recommendation:} Unlike prior work applying Focal Loss to specialized domains~\cite{meng2022weighted}, we evaluate its effectiveness on standard recommendation benchmarks with implicit feedback.
+    \item \textbf{Reconciliation with Prior Findings:} Building on Rendle et al.'s~\cite{rendle2020neural} observation that loss function choice may matter more than architecture, we investigate whether Focal Loss can improve both MF and NCF, potentially reducing the performance gap between them.
+    \item \textbf{Comprehensive Comparison with Traditional Methods:} We benchmark Focal Loss-enhanced models against traditional collaborative filtering baselines (KNN, SVD) to contextualize improvements within the broader recommendation landscape.
+\end{enumerate}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Design of Experiments}
+\label{sec:experiments}
+
+This section describes the experimental setup designed to evaluate the effectiveness of Focal Loss for collaborative filtering. We present falsifiable hypotheses, dataset characteristics, implementation details, evaluation protocols, and ablation study designs.
+
+\subsection{Research Hypotheses}
+\label{sec:hypotheses}
+
+We formulate the following falsifiable hypotheses:
+
+\begin{description}
+    \item[H1 (Focal Loss improves NeuMF):] NeuMF trained with Focal Loss achieves statistically significantly higher Hit Rate@10 and NDCG@10 compared to NeuMF trained with Binary Cross-Entropy loss.
+    
+\end{description}
+
+\subsection{Datasets}
+\label{sec:datasets}
+
+We conduct experiments on two widely-used benchmark datasets from the MovieLens collection~\cite{harper2015movielens}, summarized in Table~\ref{tab:datasets}.
+
+\begin{table}[h]
+\centering
+\caption{Dataset statistics after preprocessing}
+\label{tab:datasets}
+\small
+\begin{tabularx}{\columnwidth}{@{}l*{5}{>{\raggedleft\arraybackslash}X}@{}}
+\hline
+\textbf{Dataset} & \textbf{Users} & \textbf{Items} & \textbf{Interactions} & \textbf{Density} & \textbf{Imbalance} \\
+\hline
+ML-100K & 943 & 1,682 & 100,000 & 6.30\% & 14.9:1 \\
+ML-1M & 6,040 & 3,706 & 1,000,209 & 4.47\% & 21.4:1 \\
+\hline
+\end{tabularx}
+\end{table}
+
+\textbf{Data Preprocessing:} Following standard practice for implicit feedback evaluation~\cite{he2017ncf}, we apply the following preprocessing steps:
+\begin{enumerate}
+    \item \textbf{Binarization:} Convert explicit ratings to implicit feedback by treating ratings $\geq 4$ as positive interactions ($y=1$) and all others as negative ($y=0$). We adopt this stricter threshold (compared to treating any rating as positive) to focus on items with strong positive signals, reducing label noise from lukewarm interactions that may not reflect genuine preference.
+    \item \textbf{Filtering:} Apply 5-core filtering, retaining only users with at least 20 interactions to ensure sufficient training signal per user.
+    \item \textbf{Train/Validation/Test Split:} Use leave-one-out evaluation: for each user, the most recent interaction forms the test set, the second-most recent forms the validation set, and all remaining interactions form the training set.
+    \item \textbf{Negative Sampling:} During training, sample 4 negative items per positive interaction. During evaluation, rank each test item against 99 randomly sampled negative items.
+\end{enumerate}
+
+\subsection{Implementation Details}
+\label{sec:implementation}
+
+\textbf{Framework:} All experiments are implemented using RecBole~\cite{zhao2021recbole}, a unified PyTorch-based recommendation framework that provides standardized implementations of baseline models and evaluation protocols. We extend RecBole with a custom Focal Loss module.
+
+\textbf{Computational Resources:} Experiments are conducted on Kaggle's GPU environment (NVIDIA Tesla T4/P100, 16GB VRAM).
+
+\textbf{Reproducibility:} Random seeds are fixed across all experiments. Code will be made available upon publication.
+
+Algorithm~\ref{alg:focal-ncf} presents the training procedure for NCF with Focal Loss.
+
+\begin{algorithm}
+\caption{NCF Training with Focal Loss}
+\label{alg:focal-ncf}
+\begin{algorithmic}[1]
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+\renewcommand{\algorithmicensure}{\textbf{Output:}}
+\REQUIRE Training data $\mathcal{D}$, focusing parameter $\gamma$, balancing parameter $\alpha$
+\ENSURE Trained model parameters $\Theta$
+\STATE Initialize embeddings and network weights $\Theta$
+\FOR{epoch $= 1$ to max\_epochs}
+    \FOR{each batch $(u, i, y) \in \mathcal{D}$}
+        \STATE $\hat{y} \gets \sigma(\text{NeuMF}(u, i; \Theta))$ \COMMENT{Forward pass}
+        \STATE $p_t \gets y \cdot \hat{y} + (1-y) \cdot (1-\hat{y})$ \COMMENT{True class probability}
+        \STATE $\alpha_t \gets y \cdot \alpha + (1-y) \cdot (1-\alpha)$ \COMMENT{Class weight}
+        \STATE $\mathcal{L} \gets -\alpha_t (1-p_t)^\gamma \log(p_t)$ \COMMENT{Focal Loss}
+        \STATE Update $\Theta$ via backpropagation on $\text{mean}(\mathcal{L})$
+    \ENDFOR
+    \IF{validation metric does not improve for 10 epochs}
+        \STATE \textbf{break} \COMMENT{Early stopping}
+    \ENDIF
+\ENDFOR
+\RETURN $\Theta$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Baseline Models}
+\label{sec:baselines}
+We compare the following models, summarized in Table~\ref{tab:models}. PopRank serves as a non-personalized baseline that ranks items by global popularity (total interaction count), providing a lower bound that any personalized recommendation method should exceed.
+
+\begin{table}[h]
+\centering
+\caption{Models evaluated in experiments}
+\label{tab:models}
+\small
+\begin{tabularx}{\columnwidth}{@{}lllX@{}}
+\hline
+\textbf{Model} & \textbf{Type} & \textbf{Architecture} & \textbf{Loss} \\
+\hline
+PopRank & Non-personalized & Popularity ranking & N/A \\
+KNN-Item & Traditional & Item-based neighborhood & Cosine \\
+KNN-User & Traditional & User-based neighborhood & Cosine \\
+SVD & Traditional & Matrix factorization & MSE \\
+MF & Neural & Dot-product embeddings & BCE, BPR, FL \\
+NeuMF & Neural & GMF + MLP hybrid & BCE, BPR, FL \\
+\hline
+\end{tabularx}
+\end{table}
+
+
+\subsection{Hyperparameter Configuration}
+\label{sec:hyperparams}
+%\omer{consult efrat on the number of models evaluated in our experiments and if the comparison table should be added as a hypothesis.}
+Table~\ref{tab:hyperparams-traditional} and Table~\ref{tab:hyperparams-neural} present the hyperparameter search spaces.
+
+\begin{table}[h]
+\centering
+\caption{Hyperparameter search space for traditional methods}
+\label{tab:hyperparams-traditional}
+\small
+\begin{tabularx}{\columnwidth}{@{}llXl@{}}
+\hline
+\textbf{Parameter} & \textbf{Model} & \textbf{Values} & \textbf{Rationale} \\
+\hline
+$K$ (neighbors) & KNN & \{10, 20, 40, 80\} & Neighborhood size \\
+Similarity & KNN & \{cosine, pearson\} & Distance metric \\
+Latent factors & SVD & \{32, 64, 128\} & Embedding dim. \\
+Regularization & SVD & \{0.001, 0.01, 0.1\} & Overfitting control \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Hyperparameter search space for neural methods}
+\label{tab:hyperparams-neural}
+\small
+\begin{tabularx}{\columnwidth}{@{}lXl@{}}
+\hline
+\textbf{Parameter} & \textbf{Values} & \textbf{Rationale} \\
+\hline
+Embedding size & \{32, 64, 128\} & Model capacity \\
+MLP layers & \{[64,32], [128,64,32]\} & Network depth \\
+Learning rate & \{0.0001, 0.001, 0.01\} & Optimization speed \\
+Batch size & \{256, 512, 1024\} & GPU utilization \\
+$\gamma$ (focusing) & \{0, 0.5, 1.0, 2.0, 3.0\} & $\gamma{=}0$: BCE \\
+$\alpha$ (balancing) & \{0.25, 0.5, 0.75\} & Class weight \\
+\hline
+\end{tabularx}
+\end{table}
+
+Hyperparameters are tuned on the validation set using grid search. The best configuration is selected based on NDCG@10, and final results are reported on the held-out test set.
+
+\subsection{Evaluation Protocol}
+\label{sec:evaluation}
+
+\textbf{Metrics:} We evaluate models using standard ranking metrics for implicit feedback:
+\begin{itemize}
+    \item \textbf{Hit Rate@$K$ (HR@$K$):} Measures whether the ground-truth item appears in the top-$K$ recommendations:
+    \begin{equation}
+    \text{HR@}K = \frac{1}{|\mathcal{U}|} \sum_{u \in \mathcal{U}} \mathbf{1}[\text{rank}(i_u^+) \leq K]
+    \end{equation}
+    where $i_u^+$ is the held-out positive item for user $u$.
+
+    \item \textbf{Normalized Discounted Cumulative Gain@$K$ (NDCG@$K$):} Accounts for the position of the hit with logarithmic discount:
+    \begin{equation}
+    \text{NDCG@}K = \frac{1}{|\mathcal{U}|} \sum_{u \in \mathcal{U}} \frac{\mathbf{1}[\text{rank}(i_u^+) \leq K]}{\log_2(\text{rank}(i_u^+) + 1)}
+    \end{equation}
+\end{itemize}
+
+We report results for $K \in \{5, 10, 20\}$, with HR@10 and NDCG@10 as the primary metrics.
+
+\textbf{Evaluation Procedure:} Following the leave-one-out protocol, for each user, we rank the held-out positive item against 99 randomly sampled negatives (100 items total) and compute metrics based on the positive item's rank.
+
+\subsection{Statistical Testing}
+\label{sec:statistical-testing}
+
+To ensure reliable conclusions, we employ rigorous statistical testing:
+\begin{itemize}
+    \item \textbf{Multiple Seeds:} Each configuration is run with 10 different random seeds.
+    \item \textbf{Statistical Test:} Wilcoxon signed-rank test~\cite{wilcoxon1945} for paired comparisons (same seed, different methods), as it does not assume normality.
+    \item \textbf{Significance Level:} $p < 0.05$ with Bonferroni correction for multiple comparisons.
+    \item \textbf{Effect Size:} Report Cohen's $d$ or rank-biserial correlation to quantify practical significance.
+\end{itemize}
+
+Results are reported as mean $\pm$ standard deviation across seeds.
+
+\subsection{Ablation Study Design}
+\label{sec:ablation}
+
+To isolate the contribution of each component, we conduct the following ablation studies:
+
+\begin{enumerate}
+    \item \textbf{Loss Function Ablation:} Compare BCE, BPR, and Focal Loss on fixed NeuMF architecture to isolate the effect of the loss function.
+
+    \item \textbf{Focal Loss Component Ablation:}
+    \begin{itemize}
+        \item Vary $\gamma \in \{0, 0.5, 1.0, 2.0, 3.0\}$ with fixed $\alpha=0.25$ to analyze the focusing effect ($\gamma=0$ reduces to BCE).
+        \item Vary $\alpha \in \{0.25, 0.5, 0.75\}$ with fixed $\gamma=2.0$ to analyze the class-balancing effect.
+    \end{itemize}
+
+    \item \textbf{Architecture Ablation:} Test Focal Loss on GMF-only, MLP-only, and full NeuMF to determine architecture-specific effects.
+
+    \item \textbf{Dataset Ablation:} Compare Focal Loss improvements across ML-100K and ML-1M to analyze the correlation between imbalance ratio and performance gain.
+
+    \item \textbf{Negative Sampling Ratio Ablation:} To test H7 (sampling robustness), we train both NeuMF-BCE and NeuMF-FL across varying negative sampling ratios: 1:4 (standard), 1:10 (moderate), and 1:50 (high). This ablation tests whether Focal Loss can effectively filter noise when exposed to higher proportions of negative examples, maintaining performance where BCE-based training degrades. Computational constraints preclude testing the full 1:All ratio; we use 1:50 as a tractable upper bound that still represents a substantial increase in negative exposure.
+\end{enumerate}
+
+Table~\ref{tab:ablation-matrix} summarizes the ablation configurations. Table~\ref{tab:sampling-ablation} presents the negative sampling ratio experimental design.
+
+\begin{table}[h]
+\centering
+\caption{Ablation study configuration matrix}
+\label{tab:ablation-matrix}
+\begin{tabular}{lccc}
+\hline
+\textbf{Study} & \textbf{BCE} & $\alpha$\textbf{-BCE} & \textbf{Focal Loss} \\
+\hline
+$\gamma$ effect & $\gamma=0$ & $\gamma=0$ & $\gamma \in \{0.5, 1, 2, 3\}$ \\
+$\alpha$ effect & $\alpha=1$ & $\alpha \in \{0.25, 0.5, 0.75\}$ & $\alpha \in \{0.25, 0.5, 0.75\}$ \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Negative sampling ratio ablation design}
+\label{tab:sampling-ablation}
+\begin{tabular}{lccc}
+\hline
+\textbf{Sampling Ratio} & \textbf{Neg:Pos} & \textbf{NeuMF-BCE} & \textbf{NeuMF-FL} \\
+\hline
+Standard & 1:4 & Baseline & Baseline \\
+Moderate & 1:10 & Test & Test \\
+High & 1:50 & Test & Test \\
+\hline
+\end{tabular}
+\end{table}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%% The next two lines define the bibliography style and file.
+
+% \bibliographystyle{ACM-Reference-Format}  -> provided ordering method by course staff - orders alphabeticalliy
+\bibliographystyle{unsrt} % number the bib-references by order of citations accurances in paper -> our addition
+\bibliography{references}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\end{document}
