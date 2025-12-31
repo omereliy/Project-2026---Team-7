@@ -423,8 +423,8 @@ This section describes the experimental setup designed to evaluate the effective
 We formulate the following falsifiable hypotheses:
 
 \begin{description}
-    \item[H1 (Focal Loss improves NeuMF):] NeuMF trained with Focal Loss achieves statistically significantly higher Hit Rate@10 and NDCG@10 compared to NeuMF trained with Binary Cross-Entropy loss.
-    
+    \item[H1 (Focal Loss improves NeuMF):] NeuMF trained with Focal Loss achieves statistically significantly higher Hit Rate@10 and NDCG@10 compared to NeuMF trained with Binary Cross-Entropy loss. \omer{Issue: No effect size threshold specified. With 10 seeds, tiny improvements can be statistically significant but practically meaningless. Recommendation: Define minimum meaningful improvement (e.g., $\geq$1\% relative improvement in HR@10) or report effect sizes (Cohen's d) alongside p-values.}
+
 \end{description}
 
 \subsection{Datasets}
@@ -452,7 +452,7 @@ ML-1M & 6,040 & 3,706 & 1,000,209 & 4.47\% & 21.4:1 \\
     \item \textbf{Binarization:} Convert explicit ratings to implicit feedback by treating ratings $\geq 4$ as positive interactions ($y=1$) and all others as negative ($y=0$). We adopt this stricter threshold (compared to treating any rating as positive) to focus on items with strong positive signals, reducing label noise from lukewarm interactions that may not reflect genuine preference.
     \item \textbf{Filtering:} Apply 5-core filtering, retaining only users with at least 20 interactions to ensure sufficient training signal per user.
     \item \textbf{Train/Validation/Test Split:} Use leave-one-out evaluation: for each user, the most recent interaction forms the test set, the second-most recent forms the validation set, and all remaining interactions form the training set.
-    \item \textbf{Negative Sampling:} During training, sample 4 negative items per positive interaction. During evaluation, rank each test item against 99 randomly sampled negative items.
+    \item \textbf{Negative Sampling:} During training, sample 4 negative items per positive interaction. During evaluation, rank each test item against 99 randomly sampled negative items. \omer{Issue: 4:1 sampling ratio significantly reduces natural imbalance (14.9:1 to 21.4:1 per Table 2), potentially undermining Focal Loss's core advantage. Recommendation: Consider making higher sampling ratios (1:10 or 1:50) the primary experiment rather than ablation, since Focal Loss is designed for extreme imbalance scenarios.}
 \end{enumerate}
 
 \subsection{Implementation Details}
@@ -551,7 +551,7 @@ MLP layers & \{[64,32], [128,64,32]\} & Network depth \\
 Learning rate & \{0.0001, 0.001, 0.01\} & Optimization speed \\
 Batch size & \{256, 512, 1024\} & GPU utilization \\
 $\gamma$ (focusing) & \{0, 0.5, 1.0, 2.0, 3.0\} & $\gamma{=}0$: BCE \\
-$\alpha$ (balancing) & \{0.25, 0.5, 0.75\} & Class weight \\
+$\alpha$ (balancing) & \{0.25, 0.5, 0.75\} & Class weight \omer{Issue: $\alpha$ values combined with 4:1 negative sampling may cancel out the imbalance effect. With $\alpha=0.5$ and 4:1 sampling, effective weighting becomes nearly balanced, undermining Focal Loss motivation. Recommendation: Analyze $\alpha \times$ sampling\_ratio interaction explicitly, or test with higher sampling ratios (1:10, 1:50) as primary experiments.} \\
 \hline
 \end{tabularx}
 \end{table}
@@ -577,7 +577,7 @@ Hyperparameters are tuned on the validation set using grid search. The best conf
 
 We report results for $K \in \{5, 10, 20\}$, with HR@10 and NDCG@10 as the primary metrics.
 
-\textbf{Evaluation Procedure:} Following the leave-one-out protocol, for each user, we rank the held-out positive item against 99 randomly sampled negatives (100 items total) and compute metrics based on the positive item's rank.
+\textbf{Evaluation Procedure:} Following the leave-one-out protocol, for each user, we rank the held-out positive item against 99 randomly sampled negatives (100 items total) and compute metrics based on the positive item's rank. \omer{Issue: Random negative sampling in evaluation produces mostly easy negatives, which may not fully reveal Focal Loss's advantage in distinguishing hard cases. Recommendation: Consider adding full-ranking evaluation (rank against all items) or a hard-negative evaluation protocol as supplementary analysis.}
 
 \subsection{Statistical Testing}
 \label{sec:statistical-testing}
@@ -595,10 +595,12 @@ Results are reported as mean $\pm$ standard deviation across seeds.
 \subsection{Ablation Study Design}
 \label{sec:ablation}
 
+\omer{Missing Training Dynamics Analysis: The core claim is that Focal Loss shifts gradient mass from easy to hard examples. Recommendation: Add analysis tracking (1) per-sample loss contributions binned by prediction confidence, (2) gradient magnitude from easy vs. hard examples over epochs, (3) learning curves showing how quickly the model stops learning from easy negatives. This directly validates the mechanism, not just the outcome.}
+
 To isolate the contribution of each component, we conduct the following ablation studies:
 
 \begin{enumerate}
-    \item \textbf{Loss Function Ablation:} Compare BCE, BPR, and Focal Loss on fixed NeuMF architecture to isolate the effect of the loss function.
+    \item \textbf{Loss Function Ablation:} Compare BCE, BPR, and Focal Loss on fixed NeuMF architecture to isolate the effect of the loss function. \omer{Issue: Unfair hyperparameter comparison - BCE has 0 extra params, Focal Loss has 2 ($\gamma$, $\alpha$). Recommendation: Add $\alpha$-balanced BCE ($\gamma=0$, $\alpha$ tuned) as control to isolate focusing effect from class weighting effect.}
 
     \item \textbf{Focal Loss Component Ablation:}
     \begin{itemize}
@@ -610,7 +612,7 @@ To isolate the contribution of each component, we conduct the following ablation
 
     \item \textbf{Dataset Ablation:} Compare Focal Loss improvements across ML-100K and ML-1M to analyze the correlation between imbalance ratio and performance gain.
 
-    \item \textbf{Negative Sampling Ratio Ablation:} To test H7 (sampling robustness), we train both NeuMF-BCE and NeuMF-FL across varying negative sampling ratios: 1:4 (standard), 1:10 (moderate), and 1:50 (high). This ablation tests whether Focal Loss can effectively filter noise when exposed to higher proportions of negative examples, maintaining performance where BCE-based training degrades. Computational constraints preclude testing the full 1:All ratio; we use 1:50 as a tractable upper bound that still represents a substantial increase in negative exposure.
+    \item \textbf{Negative Sampling Ratio Ablation:} To test H7 (sampling robustness)\omer{H7 is referenced but not defined in Section 5.1 - add as hypothesis or remove mention}, we train both NeuMF-BCE and NeuMF-FL across varying negative sampling ratios: 1:4 (standard), 1:10 (moderate), and 1:50 (high). This ablation tests whether Focal Loss can effectively filter noise when exposed to higher proportions of negative examples, maintaining performance where BCE-based training degrades. Computational constraints preclude testing the full 1:All ratio; we use 1:50 as a tractable upper bound that still represents a substantial increase in negative exposure.
 \end{enumerate}
 
 Table~\ref{tab:ablation-matrix} summarizes the ablation configurations. Table~\ref{tab:sampling-ablation} presents the negative sampling ratio experimental design.
