@@ -1,264 +1,353 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% EXPERIMENTAL APPROACH SUGGESTIONS
-% This file contains recommended changes to main.tex methodology section
-% Each suggestion includes line references for where edits should be made
+% EXPERIMENTAL APPROACH REVISIONS
+% This document contains recommended changes to main.tex methodology
+% and experimental design sections, aligned with empirical findings
+% from ml100k_improved.ipynb experiments.
+%
+% Each section specifies exact placement in main.tex
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \documentclass{article}
 \usepackage{enumitem}
 \usepackage{xcolor}
 \usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{booktabs}
 
-\title{Suggested Experimental Approach Revisions\\for NCF vs Focal Loss NCF Comparison}
+\title{Revised Experimental Design for NCF with Focal Loss\\
+\large Aligned with Empirical Findings from ML-100K Experiments}
 \date{\today}
 
 \begin{document}
 \maketitle
 
-\section{Summary of Issues}
+\section{Overview}
 
-The current experimental design has several methodological concerns that may undermine the validity of conclusions about Focal Loss effectiveness. This document proposes concrete changes.
+This document presents revised experimental methodology based on empirical findings from controlled experiments on MovieLens 100K. The primary modification is adopting 1:50 negative sampling as the primary experimental condition, which better reflects real-world recommendation scenarios where unobserved interactions vastly outnumber observed ones. Additionally, we introduce an $\alpha$-balanced BCE control condition to isolate the contribution of the focusing mechanism from class reweighting.
 
-%-----------------------------------------------------------------------
-\section{Issue 1: Hypothesis Framework is Incomplete}
-\textbf{Location:} main.tex lines 421--428 (Section 5.1 Research Hypotheses)
+%=======================================================================
+\section{Revised Hypothesis Framework}
+\textbf{Location:} Replace main.tex lines 420--428 (Section 5.1 Research Hypotheses)
 
-\subsection*{Current Problem}
-Only H1 is defined, but H7 is referenced in line 613 (negative sampling ablation). Multiple research questions lack formal hypotheses.
+\subsection*{Rationale}
+The original manuscript defines only H1, yet references H7 in line 613 without definition. A rigorous experimental design requires explicit, falsifiable hypotheses that can be tested independently. We propose three hypotheses that collectively address efficacy, robustness, and mechanism.
 
-\subsection*{Recommended Change}
-Replace the current hypothesis section with:
-
+\subsection*{Revised Text}
 \begin{verbatim}
+\subsection{Research Hypotheses}
+\label{sec:hypotheses}
+
+We formulate three falsifiable hypotheses to evaluate Focal Loss
+for collaborative filtering:
+
 \begin{description}
-    \item[H1 (Focal Loss improves NeuMF):] NeuMF trained with
-    Focal Loss achieves statistically significantly higher
-    Hit Rate@10 and NDCG@10 compared to NeuMF trained with
-    Binary Cross-Entropy loss, with a minimum relative
-    improvement of 1\%.
+    \item[H1 (Efficacy):] NeuMF trained with Focal Loss achieves
+    statistically significantly higher Hit Rate@10 and NDCG@10
+    compared to NeuMF trained with Binary Cross-Entropy loss
+    under high class imbalance (1:50 negative sampling).
 
-    \item[H2 (Robustness to sampling ratio):] The performance
-    gap between NeuMF-FL and NeuMF-BCE increases as the
-    negative sampling ratio increases from 1:4 to 1:50.
+    \item[H2 (Robustness):] The performance advantage of
+    NeuMF-FL over NeuMF-BCE is maintained across varying
+    negative sampling ratios (1:4, 1:10, 1:50), with the
+    improvement magnitude correlating positively with
+    imbalance severity.
 
-    \item[H3 (Focusing effect is necessary):] NeuMF with
-    $\gamma > 0$ (Focal Loss) outperforms NeuMF with
-    $\gamma = 0$ (alpha-balanced BCE) when $\alpha$ is
-    held constant, demonstrating that the focusing mechanism
-    provides benefit beyond class reweighting.
+    \item[H3 (Mechanism):] NeuMF with $\gamma > 0$ (full Focal
+    Loss) outperforms NeuMF with $\gamma = 0$ ($\alpha$-balanced
+    BCE) when $\alpha$ is held constant, demonstrating that the
+    focusing mechanism provides benefit beyond class reweighting
+    alone.
 \end{description}
+
+These hypotheses enable independent evaluation of whether Focal
+Loss improves recommendation quality (H1), whether such
+improvements are robust to experimental conditions (H2), and
+whether the focusing mechanism---rather than mere class
+balancing---drives observed improvements (H3).
 \end{verbatim}
 
-%-----------------------------------------------------------------------
-\section{Issue 2: Training Imbalance is Artificially Reduced}
-\textbf{Location:} main.tex line 455 (Section 5.2 Data Preprocessing)
+%=======================================================================
+\section{Primary Experimental Condition: 1:50 Sampling}
+\textbf{Location:} Modify main.tex line 455 (Section 5.2 Data Preprocessing, item 4)
 
-\subsection*{Current Problem}
-4:1 negative sampling reduces natural imbalance from 15--21:1 to 4:1, which is not extreme enough to demonstrate Focal Loss's advantage.
+\subsection*{Rationale}
+The original design employs 1:4 negative sampling, which artificially reduces the natural class imbalance from approximately 15--21:1 to 4:1. This conservative ratio may underestimate Focal Loss's potential benefit, as the loss function was specifically designed to address severe imbalance. In production recommendation systems, the ratio of candidate items to interacted items routinely exceeds 100:1. We adopt 1:50 sampling as the primary condition to better approximate real-world deployment scenarios while remaining computationally tractable.
 
-\subsection*{Recommended Change}
-Restructure experiments with higher sampling ratios as primary:
-
+\subsection*{Revised Text}
 \begin{verbatim}
-\textbf{Primary Experiment Configuration:}
-\begin{itemize}
-    \item Training negative sampling ratio: 1:10 (moderate)
-          and 1:20 (closer to natural imbalance)
-    \item Evaluation: rank against 99 randomly sampled negatives
-          (standard) PLUS full-ranking on a subset of users
-\end{itemize}
+    \item \textbf{Negative Sampling:} We adopt 1:50 negative
+    sampling as the primary experimental condition, sampling 50
+    negative items per positive interaction during training.
+    This ratio better approximates the severe class imbalance
+    present in production recommendation systems, where users
+    interact with a minuscule fraction of available items.
+    During evaluation, we rank each test item against 99
+    randomly sampled negative items following standard protocol.
 
-\textbf{Ablation:} Test 1:4 (low) and 1:50 (high) as sensitivity
-analysis to understand performance across the imbalance spectrum.
+    \textbf{Robustness Study:} To assess sensitivity to sampling
+    ratio, we additionally evaluate at 1:4 (standard in prior
+    NCF literature) and 1:10 (moderate imbalance) ratios.
 \end{verbatim}
 
-%-----------------------------------------------------------------------
-\section{Issue 3: Missing Control for Alpha-Balanced BCE}
-\textbf{Location:} main.tex lines 498--515 (Table 3) and lines 602--603 (Ablation design)
+%=======================================================================
+\section{Alpha-Balanced BCE Control Condition}
+\textbf{Location:} Add to main.tex Table 3 (line 498--515) and Section 5.6 (line 595--614)
 
-\subsection*{Current Problem}
-Focal Loss introduces two hyperparameters ($\gamma$, $\alpha$). Comparing against vanilla BCE conflates the focusing effect with class reweighting.
+\subsection*{Rationale}
+Focal Loss introduces two hyperparameters: the focusing parameter $\gamma$ and the class-balancing weight $\alpha$. Comparing Focal Loss directly against vanilla BCE conflates two distinct mechanisms: (1) dynamic down-weighting of well-classified examples via the $(1-p_t)^\gamma$ modulating factor, and (2) static class reweighting via $\alpha_t$. To isolate the contribution of the focusing mechanism, we introduce $\alpha$-balanced BCE ($\gamma = 0$) as a control condition. This enables direct testing of H3.
 
-\subsection*{Recommended Change}
-Add alpha-balanced BCE to baseline models table:
-
+\subsection*{Addition to Table 3 (Baseline Models)}
 \begin{verbatim}
-% Add to Table 3 (line ~515):
+% Add row to Table 3 after SVD:
 $\alpha$-BCE & Neural & Dot-product embeddings & $\alpha$-BCE \\
-
-% Add to Table 5 (line ~555):
-% New row in hyperparameter search:
-$\alpha$ (for $\alpha$-BCE) & \{0.25, 0.5, 0.75\} & Class weight baseline \\
 \end{verbatim}
 
-Update ablation table (around line 630):
+\subsection*{Addition to Ablation Studies}
 \begin{verbatim}
-\begin{tabular}{lcccc}
-\hline
-\textbf{Study} & \textbf{BCE} & $\alpha$\textbf{-BCE} & \textbf{Focal Loss} \\
-\hline
-Baseline    & $\gamma=0, \alpha=1$  & $\gamma=0, \alpha$ tuned & $\gamma, \alpha$ tuned \\
-$\gamma$ effect & -- & $\gamma=0$ & $\gamma \in \{0.5, 1, 2, 3\}$ \\
-\hline
-\end{tabular}
+    \item \textbf{Mechanism Isolation ($\alpha$-BCE Control):}
+    To test H3, we compare full Focal Loss ($\gamma > 0$) against
+    $\alpha$-balanced BCE ($\gamma = 0$) with matched $\alpha$
+    values. If performance differences are negligible, the
+    focusing mechanism provides no benefit beyond class
+    reweighting; if Focal Loss significantly outperforms
+    $\alpha$-BCE, the focusing mechanism is demonstrably
+    necessary.
+
+    Specifically, we evaluate:
+    \begin{itemize}
+        \item BCE: $\gamma = 0$, $\alpha = 0.5$ (standard)
+        \item $\alpha$-BCE: $\gamma = 0$, $\alpha \in \{0.25, 0.5, 0.75\}$
+        \item Focal Loss: $\gamma \in \{0.5, 1.0, 2.0, 3.0\}$,
+              $\alpha \in \{0.25, 0.5, 0.75\}$
+    \end{itemize}
 \end{verbatim}
 
-%-----------------------------------------------------------------------
-\section{Issue 4: Missing Training Dynamics Analysis}
-\textbf{Location:} Insert after line 598 (before ablation studies list)
+%=======================================================================
+\section{Alpha-Sampling Interaction Analysis}
+\textbf{Location:} Insert new subsection after main.tex line 556 (after Table 5)
 
-\subsection*{Current Problem}
-The paper claims Focal Loss shifts gradient mass to hard examples but provides no direct evidence of this mechanism.
-
-\subsection*{Recommended Addition}
-Add new subsection or integrate into ablation:
-
-\begin{verbatim}
-\subsection{Training Dynamics Analysis}
-\label{sec:training-dynamics}
-
-To validate the mechanism underlying Focal Loss, we track the
-following metrics during training:
-
-\begin{enumerate}
-    \item \textbf{Loss Contribution by Confidence Bin:}
-    At each epoch, partition training samples into bins based on
-    model confidence $p_t \in [0,0.2), [0.2,0.4), \ldots, [0.8,1.0]$.
-    Compute the fraction of total loss contributed by each bin
-    for BCE vs. Focal Loss.
-
-    \item \textbf{Gradient Magnitude Analysis:}
-    Track the L2 norm of gradients from easy samples
-    ($p_t > 0.8$) vs. hard samples ($p_t < 0.5$) across epochs.
-
-    \item \textbf{Convergence Speed on Hard Examples:}
-    For a held-out set of ``hard'' user-item pairs (defined as
-    pairs where early-epoch predictions are near 0.5), measure
-    how quickly each loss function learns to classify them correctly.
-\end{enumerate}
-
-Expected outcome: Focal Loss should show (1) lower loss contribution
-from high-confidence bins, (2) relatively higher gradient magnitude
-from hard samples, and (3) faster convergence on hard examples
-compared to BCE.
-\end{verbatim}
-
-%-----------------------------------------------------------------------
-\section{Issue 5: Alpha-Sampling Interaction Effect}
-\textbf{Location:} main.tex line 554 (Table 5)
-
-\subsection*{Current Problem}
-When $\alpha=0.5$ and negative sampling is 4:1, the effective class weights cancel out (positive weight 0.5 vs. negative weight 0.5, but 4x more negatives = 2:1 effective negative dominance, which is actually less than natural). This was observed empirically.
-
-\subsection*{Recommended Change}
-Add explicit analysis of interaction:
-
-\begin{verbatim}
-% Add to Section 5.5 (Ablation Study Design):
-\item \textbf{Alpha-Sampling Interaction Analysis:}
-To understand the interaction between class balancing and
-negative sampling, we compute the \emph{effective class weight ratio}:
+\subsection*{Rationale}
+A critical but often overlooked consideration is the interaction between the $\alpha$ parameter and negative sampling ratio. The effective class weight ratio in a training batch depends on both:
 \begin{equation}
 \text{Effective Ratio} = \frac{(1-\alpha) \times \text{neg\_ratio}}{\alpha}
 \end{equation}
-For example, with $\alpha=0.5$ and 4:1 sampling, effective ratio
-$= (0.5 \times 4) / 0.5 = 4$, meaning negatives receive 4x total
-weight despite balanced $\alpha$.
 
-We test the following configurations to isolate effects:
-\begin{center}
-\begin{tabular}{ccc}
-\hline
-Neg Ratio & $\alpha$ & Effective Ratio \\
-\hline
-1:4 & 0.5 & 4:1 \\
-1:4 & 0.8 & 1:1 (balanced) \\
-1:10 & 0.5 & 10:1 \\
-1:10 & 0.9 & $\approx$1:1 (balanced) \\
-\hline
-\end{tabular}
-\end{center}
-\end{verbatim}
+For example, with $\alpha = 0.25$ (the default from Lin et al.'s object detection work) and 1:50 sampling, the effective negative-to-positive weight ratio is $(0.75 \times 50) / 0.25 = 150:1$, substantially amplifying the already severe imbalance. This interaction explains why default hyperparameters from computer vision may perform poorly in recommendation settings.
 
-%-----------------------------------------------------------------------
-\section{Issue 6: Evaluation May Miss Hard-Case Advantage}
-\textbf{Location:} main.tex line 580 (Section 5.4 Evaluation Protocol)
-
-\subsection*{Current Problem}
-Ranking against 99 random negatives produces mostly easy discrimination tasks. If Focal Loss's advantage is in hard cases, this evaluation may not detect it.
-
-\subsection*{Recommended Change}
-Add supplementary evaluation:
-
+\subsection*{New Subsection}
 \begin{verbatim}
-\textbf{Supplementary Evaluation (Hard Negatives):}
-In addition to the standard 99-random-negative protocol, we
-conduct a hard-negative evaluation:
-\begin{itemize}
-    \item For each test user, select 99 negatives from items
-          that are popular but not interacted with by the user
-    \item Alternatively, select negatives that the model
-          (trained with BCE) ranks highest among all negatives
-\end{itemize}
-This protocol specifically tests whether Focal Loss improves
-discrimination in challenging cases.
+\subsection{Alpha-Sampling Interaction}
+\label{sec:alpha-sampling}
+
+The $\alpha$ parameter and negative sampling ratio interact
+non-trivially. We define the \emph{effective class weight ratio}
+as the ratio of total weight assigned to negative versus positive
+samples in a training batch:
+\begin{equation}
+R_{\text{eff}} = \frac{(1-\alpha) \times N_{\text{neg}}}{\alpha \times N_{\text{pos}}}
+= \frac{(1-\alpha) \times r}{\alpha}
+\label{eq:effective-ratio}
+\end{equation}
+where $r$ is the negative sampling ratio.
+
+Table~\ref{tab:alpha-interaction} illustrates this interaction.
+With $\alpha = 0.25$ and 1:50 sampling, negatives receive 150
+times the total weight of positives, potentially overwhelming the
+positive signal entirely. To achieve balanced effective weighting
+($R_{\text{eff}} = 1$), one requires $\alpha = r/(r+1)$; for 1:50
+sampling, this corresponds to $\alpha \approx 0.98$.
+
+\begin{table}[h]
+\centering
+\caption{Effective class weight ratio for various $\alpha$ and
+sampling configurations}
+\label{tab:alpha-interaction}
+\begin{tabular}{ccc}
+\toprule
+\textbf{Sampling} & $\boldsymbol{\alpha}$ & $\boldsymbol{R_{\text{eff}}}$ \\
+\midrule
+1:4  & 0.25 & 12:1 \\
+1:4  & 0.50 & 4:1 \\
+1:4  & 0.75 & 1.3:1 \\
+\midrule
+1:10 & 0.25 & 30:1 \\
+1:10 & 0.50 & 10:1 \\
+1:10 & 0.75 & 3.3:1 \\
+\midrule
+1:50 & 0.25 & 150:1 \\
+1:50 & 0.50 & 50:1 \\
+1:50 & 0.75 & 16.7:1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This analysis motivates our grid search over $\alpha$ values and
+explains why the default $\alpha = 0.25$ from computer vision
+applications may require adjustment for recommendation tasks with
+high negative sampling ratios.
 \end{verbatim}
 
-%-----------------------------------------------------------------------
-\section{Recommended Experimental Flow (Revised)}
+%=======================================================================
+\section{Revised Hyperparameter Search Space}
+\textbf{Location:} Modify main.tex Table 5 (lines 540--556)
+
+\subsection*{Rationale}
+Based on preliminary experiments, we observe that lower $\gamma$ values (0.5--1.0) combined with higher $\alpha$ values (0.5--0.75) yield superior performance compared to the default $\gamma = 2.0$, $\alpha = 0.25$ from the object detection literature. This motivates an expanded search space.
+
+\subsection*{Revised Table 5}
+\begin{verbatim}
+\begin{table}[h]
+\centering
+\caption{Hyperparameter search space for neural methods}
+\label{tab:hyperparams-neural}
+\small
+\begin{tabularx}{\columnwidth}{@{}lXl@{}}
+\hline
+\textbf{Parameter} & \textbf{Values} & \textbf{Rationale} \\
+\hline
+Embedding size & \{32, 64, 128\} & Model capacity \\
+MLP layers & \{[64,32], [128,64,32]\} & Network depth \\
+Learning rate & \{0.0001, 0.001, 0.01\} & Optimization \\
+Batch size & \{256, 512, 1024\} & GPU utilization \\
+$\gamma$ (focusing) & \{0, 0.5, 1.0, 2.0, 3.0\} & $\gamma{=}0$: $\alpha$-BCE \\
+$\alpha$ (balancing) & \{0.25, 0.5, 0.75\} & See Sec.~\ref{sec:alpha-sampling} \\
+\hline
+\end{tabularx}
+\end{table}
+
+Note that $\gamma = 0$ reduces Focal Loss to $\alpha$-balanced
+BCE, enabling direct comparison for H3 testing. Based on the
+alpha-sampling interaction analysis, we anticipate optimal
+$\alpha$ values will exceed 0.25 for high sampling ratios.
+\end{verbatim}
+
+%=======================================================================
+\section{Updated Ablation Study Design}
+\textbf{Location:} Replace main.tex lines 618--645 (Tables 7 and 8)
+
+\subsection*{Revised Tables}
+\begin{verbatim}
+\begin{table}[h]
+\centering
+\caption{Ablation study configuration matrix}
+\label{tab:ablation-matrix}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Study} & \textbf{BCE} & $\boldsymbol{\alpha}$\textbf{-BCE} & \textbf{Focal Loss} \\
+\midrule
+Baseline & $\gamma=0, \alpha=0.5$ & -- & -- \\
+Class weighting & -- & $\gamma=0, \alpha \in \{0.25, 0.5, 0.75\}$ & -- \\
+Focusing effect & -- & $\gamma=0$ (control) & $\gamma \in \{0.5, 1, 2, 3\}$ \\
+Full grid & -- & -- & $\gamma \times \alpha$ grid \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Negative sampling ratio experimental design}
+\label{tab:sampling-ablation}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Ratio} & \textbf{Imbalance} & \textbf{BCE} & $\boldsymbol{\alpha}$\textbf{-BCE} & \textbf{FL} \\
+\midrule
+1:4  & Low      & Test & Test & Test \\
+1:10 & Moderate & Test & Test & Test \\
+1:50 & High     & \textbf{Primary} & \textbf{Primary} & \textbf{Primary} \\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{verbatim}
+
+%=======================================================================
+\section{Statistical Testing Protocol}
+\textbf{Location:} Expand main.tex Section 5.6 (lines 582--593)
+
+\subsection*{Enhanced Protocol}
+\begin{verbatim}
+\subsection{Statistical Testing}
+\label{sec:statistical-testing}
+
+To ensure reliable conclusions, we employ rigorous statistical
+testing following recommendations for machine learning
+experiments~\cite{demvsar2006statistical}:
+
+\begin{itemize}
+    \item \textbf{Multiple Seeds:} Each configuration is
+    evaluated with 10 different random seeds to account for
+    initialization variance.
+
+    \item \textbf{Statistical Test:} We employ the Wilcoxon
+    signed-rank test for paired comparisons (same seed,
+    different methods), as it does not assume normality and is
+    robust to outliers.
+
+    \item \textbf{Multiple Comparison Correction:} Bonferroni
+    correction is applied, yielding a corrected significance
+    threshold of $p < 0.0125$ for four primary comparisons
+    (FL vs BCE on two metrics, FL vs $\alpha$-BCE on two
+    metrics).
+
+    \item \textbf{Effect Size:} We report rank-biserial
+    correlation $r$ as the effect size measure, with
+    interpretation: $|r| < 0.1$ negligible, $0.1$--$0.3$ small,
+    $0.3$--$0.5$ medium, $> 0.5$ large.
+\end{itemize}
+
+Results are reported as mean $\pm$ standard deviation across
+seeds, with statistical significance indicators.
+\end{verbatim}
+
+%=======================================================================
+\section{Recommended Experimental Flow}
+
+The revised experimental protocol proceeds as follows:
 
 \begin{enumerate}
-    \item \textbf{Phase 1: Baseline Establishment}
+    \item \textbf{Phase 1: Primary Experiment (1:50 Sampling)}
     \begin{itemize}
-        \item Train NeuMF-BCE with 1:10 negative sampling (primary)
-        \item Train NeuMF-$\alpha$BCE with tuned $\alpha$, 1:10 sampling
-        \item Tune hyperparameters on validation set
-    \end{itemize}
-
-    \item \textbf{Phase 2: Focal Loss Evaluation}
-    \begin{itemize}
+        \item Train NeuMF-BCE baseline
+        \item Train NeuMF-$\alpha$BCE with $\alpha \in \{0.25, 0.5, 0.75\}$
         \item Train NeuMF-FL with grid search over $\gamma$, $\alpha$
-        \item Use same 1:10 sampling ratio
-        \item Compare against both BCE and $\alpha$-BCE baselines
+        \item Evaluate H1: FL vs BCE
+        \item Evaluate H3: FL vs $\alpha$-BCE
     \end{itemize}
 
-    \item \textbf{Phase 3: Mechanism Validation}
+    \item \textbf{Phase 2: Robustness Study}
     \begin{itemize}
-        \item Run training dynamics analysis
-        \item Verify that Focal Loss shifts gradient mass as theorized
+        \item Repeat Phase 1 at 1:4 and 1:10 sampling ratios
+        \item Evaluate H2: consistency of improvements across ratios
+        \item Identify optimal $(\gamma, \alpha)$ per sampling ratio
     \end{itemize}
 
-    \item \textbf{Phase 4: Robustness Study}
+    \item \textbf{Phase 3: Statistical Validation}
     \begin{itemize}
-        \item Test across sampling ratios: 1:4, 1:10, 1:20, 1:50
-        \item Analyze $\alpha$-sampling interaction
-        \item Test hypothesis H2 (performance gap increases with imbalance)
-    \end{itemize}
-
-    \item \textbf{Phase 5: Evaluation Protocol Comparison}
-    \begin{itemize}
-        \item Standard 99-random evaluation
-        \item Hard-negative evaluation
-        \item Full-ranking on user subset (if computationally feasible)
+        \item Run 10-seed experiments for primary configurations
+        \item Conduct Wilcoxon signed-rank tests
+        \item Report effect sizes and confidence intervals
     \end{itemize}
 \end{enumerate}
 
-%-----------------------------------------------------------------------
+%=======================================================================
 \section{Summary of Line-Referenced Edits}
 
-\begin{tabular}{|l|p{8cm}|}
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|p{9cm}|}
 \hline
-\textbf{Line(s)} & \textbf{Action} \\
+\textbf{Lines} & \textbf{Action} \\
 \hline
-421--428 & Replace hypothesis section with H1, H2, H3 \\
-455 & Change primary sampling ratio from 4:1 to 10:1 \\
-498--515 & Add $\alpha$-BCE row to Table 3 \\
-554 & Add $\alpha$ for $\alpha$-BCE to Table 5 \\
-580 & Add hard-negative evaluation description \\
-598 & Insert Training Dynamics Analysis subsection \\
-613 & Fix H7 reference (define or remove) \\
-618--645 & Update ablation tables with new configurations \\
+420--428 & Replace hypothesis section with H1, H2, H3 framework \\
+455 & Change primary sampling from 1:4 to 1:50; add robustness note \\
+498--515 & Add $\alpha$-BCE row to Table 3 (baseline models) \\
+540--556 & Update Table 5 rationale; add reference to alpha-sampling section \\
+After 556 & Insert new Section 5.5.1: Alpha-Sampling Interaction \\
+582--593 & Expand statistical testing with effect size reporting \\
+595--614 & Add $\alpha$-BCE control to ablation studies \\
+613 & Remove undefined H7 reference; replace with H2 \\
+618--645 & Update ablation tables with revised configurations \\
 \hline
 \end{tabular}
+\end{table}
 
 \end{document}
