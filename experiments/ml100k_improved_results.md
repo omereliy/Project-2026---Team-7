@@ -15,6 +15,7 @@ Key findings:
 1. **Focal Loss works best at extreme imbalance** (1:4 and 1:50), supporting its design purpose
 2. **Alpha (class weighting) is critical** - the default α=0.25 from computer vision creates excessive negative dominance
 3. **Optimal hyperparameters differ from CV defaults**: lower γ (0.5-1.0) and higher α (0.5-0.75) work better for recommendation
+4. **Statistical validation pending** - run 10-seed Wilcoxon test to confirm significance
 
 ---
 
@@ -22,9 +23,9 @@ Key findings:
 
 | Hypothesis | Description | Result |
 |------------|-------------|--------|
-| **H1 (Efficacy)** | Focal Loss improves NeuMF over BCE | **SUPPORTED** at 1:50 (+9.98% NDCG, +13.24% HR) |
+| **H1 (Efficacy)** | Focal Loss improves NeuMF over BCE | **SUPPORTED** at 1:50 (+9.98% NDCG, +13.24% HR) - *awaiting statistical validation* |
 | **H2 (Robustness)** | Improvements hold across sampling ratios | **PARTIALLY SUPPORTED** (2/3 ratios: 1:4, 1:50) |
-| **H3 (Mechanism)** | Focusing effect (gamma > 0) is necessary | **REQUIRES STATISTICAL VALIDATION** |
+| **H3 (Mechanism)** | Focusing effect (gamma > 0) is necessary | **PENDING** - *requires 10-seed Wilcoxon test* |
 
 ---
 
@@ -152,10 +153,10 @@ Using alpha=0.25 with 1:10 sampling creates a 30:1 effective negative dominance,
 ### 1. Default Parameters Don't Transfer from Computer Vision
 The default gamma=2.0, alpha=0.25 from Lin et al.'s object detection paper performs poorly for recommendation. Lower gamma (0.5-1.0) and higher alpha (0.5-0.75) work better.
 
-### 2. Alpha Matters More Than Gamma
-- Alpha-BCE (gamma=0) often matches or outperforms full Focal Loss
-- The focusing mechanism provides less benefit than proper class weighting
-- This suggests H3 (mechanism hypothesis) is not supported
+### 2. Alpha Matters More Than Gamma (Based on Single-Seed Results)
+- Alpha-BCE (γ=0) often matches or outperforms full Focal Loss at 1:10
+- At 1:50, FL outperforms BCE, but H3 (FL vs α-BCE) needs multi-seed validation
+- Run Wilcoxon test to determine if focusing mechanism provides additional benefit
 
 ### 3. Optimal Hyperparameters Vary by Sampling Ratio
 No single (gamma, alpha) configuration works best across all ratios:
@@ -179,7 +180,7 @@ The results reveal a nuanced picture of Focal Loss for recommendation:
 
 **Why tuned Focal Loss helps**: With alpha=0.5, the effective ratio drops to 10:1, matching the actual sampling ratio. Combined with mild focusing (gamma=0.5-1.0), this provides balanced training.
 
-**Why Alpha-BCE sometimes suffices**: At 1:10 sampling, simple class reweighting via alpha achieves most of the benefit. The focusing mechanism (gamma > 0) adds value primarily at extreme ratios where easy negatives dominate.
+**Whether focusing mechanism helps**: This requires multi-seed validation. At 1:10, α-BCE matches FL, suggesting class weighting alone may suffice. At 1:50, FL shows improvement over BCE, but comparison with α-BCE needs the Wilcoxon test to determine if the focusing effect (γ > 0) provides additional benefit.
 
 **Practical recommendation**: For practitioners:
 1. Start with gamma=0.5, alpha=0.5 as a baseline
@@ -236,59 +237,33 @@ To ensure reliable conclusions, we employ rigorous statistical testing:
 
 ### Results (1:50 Sampling, Primary Experiment)
 
-> **Note**: Run the Wilcoxon test cells in `ml100k_improved.ipynb` to populate actual values.
-> Set `REUSE_RESULTS = False` and execute cells 37-42.
+> **⚠️ PENDING: Run 10-seed experiments to populate actual values**
+>
+> To get real statistical results:
+> 1. Set `REUSE_RESULTS = False` in notebook cell 37
+> 2. Run cells 37-42 (takes ~30 training runs)
+> 3. Update this section with printed results
 
 #### H1: Focal Loss vs BCE
 
 | Metric | BCE (mean±std) | FL (mean±std) | Change | p-value | Effect (r) | Significant? |
 |--------|----------------|---------------|--------|---------|------------|--------------|
-| NDCG@10 | *pending* | *pending* | *pending* | *pending* | *pending* | *pending* |
-| HR@10 | *pending* | *pending* | *pending* | *pending* | *pending* | *pending* |
+| NDCG@10 | *run experiment* | *run experiment* | *pending* | *pending* | *pending* | *pending* |
+| HR@10 | *run experiment* | *run experiment* | *pending* | *pending* | *pending* | *pending* |
 
 #### H3: Focal Loss vs Alpha-BCE (Mechanism)
 
 | Metric | α-BCE (mean±std) | FL (mean±std) | Change | p-value | Effect (r) | Significant? |
 |--------|------------------|---------------|--------|---------|------------|--------------|
-| NDCG@10 | *pending* | *pending* | *pending* | *pending* | *pending* | *pending* |
-| HR@10 | *pending* | *pending* | *pending* | *pending* | *pending* | *pending* |
+| NDCG@10 | *run experiment* | *run experiment* | *pending* | *pending* | *pending* | *pending* |
+| HR@10 | *run experiment* | *run experiment* | *pending* | *pending* | *pending* | *pending* |
 
-### Expected Outcomes
+### Expected Results (Based on Single-Seed Grid Search)
 
-Based on single-seed results at 1:50:
+From the grid search at 1:50 (single seed), we observed:
+- **FL vs BCE**: +9.98% NDCG, +13.24% HR
+- **Best tuned FL vs BCE**: +25.7% NDCG (γ=1.0, α=0.50)
 
-| Comparison | Single-Seed Result | Expected Statistical Outcome |
-|------------|-------------------|------------------------------|
-| FL vs BCE (NDCG) | +9.98% | Likely significant if consistent across seeds |
-| FL vs BCE (HR) | +13.24% | Likely significant if consistent across seeds |
-| FL vs α-BCE | Depends on α | Key test for H3 mechanism hypothesis |
-
-### Interpretation Guide
-
-**If FL vs BCE is significant (p < 0.0125)**:
-- H1 is statistically supported
-- Focal Loss provides reliable improvement at high imbalance
-
-**If FL vs BCE is NOT significant**:
-- Observed improvement may be due to random variation
-- Need more seeds or larger effect to claim improvement
-
-**If FL vs α-BCE is significant (FL wins)**:
-- H3 is supported: focusing mechanism (γ > 0) provides benefit
-- The modulating factor contributes beyond class weighting
-
-**If FL vs α-BCE is NOT significant**:
-- H3 is not supported: class weighting alone is sufficient
-- Practitioners can use simpler α-BCE instead of full Focal Loss
-
----
-
-## How to Run Statistical Tests
-
-1. Open `ml100k_improved.ipynb` in Colab/Jupyter
-2. Run all cells up to and including the grid search
-3. Navigate to "Statistical Significance Testing" section (cells 36-42)
-4. Set `REUSE_RESULTS = False` in cell 37
-5. Set `TEST_RATIO = 50` for 1:50 primary experiment
-6. Execute cells 37-42 (takes ~30 training runs)
-7. Update this markdown with the printed results
+If these improvements are consistent across 10 seeds, we expect:
+- H1 to be statistically supported
+- H3 outcome depends on α-BCE performance (needs testing)
