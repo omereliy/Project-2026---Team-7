@@ -2,268 +2,242 @@
 
 **Dataset**: MovieLens 100K
 **Model**: NeuMF (GMF + MLP hybrid)
-**Primary Experiment**: 1:50 negative sampling (realistic imbalance)
+**Primary Experiment**: 1:10 negative sampling
 **Default Focal Loss Parameters**: gamma=2.0, alpha=0.25
 
 ---
 
 ## Executive Summary
 
-The improved experimental design with **1:50 negative sampling as primary** (reflecting realistic production imbalance) reveals that **Focal Loss improves over BCE by +9.98% NDCG and +13.24% HR** at high class imbalance. With **tuned hyperparameters** (γ=1.0, α=0.50), improvements reach **+25.7% NDCG**.
+The improved experimental design reveals **mixed results for Focal Loss with default parameters**. At the primary 1:10 sampling ratio, **Focal Loss underperforms both BCE and Alpha-BCE**. However, at extreme imbalance (1:50), Focal Loss shows **+26.79% NDCG improvement** over BCE.
+
+**Critical finding**: The notebook execution **stopped at cell 19** due to a scipy API error (`binom_test` deprecated). The **Wilcoxon statistical test was NOT executed**, meaning all hypothesis conclusions are based on single-seed results only.
 
 Key findings:
-1. **Focal Loss works best at extreme imbalance** (1:4 and 1:50), supporting its design purpose
-2. **Alpha (class weighting) is critical** - the default α=0.25 from computer vision creates excessive negative dominance
-3. **Optimal hyperparameters differ from CV defaults**: lower γ (0.5-1.0) and higher α (0.5-0.75) work better for recommendation
-4. **Statistical validation pending** - run 10-seed Wilcoxon test to confirm significance
+1. **Default FL parameters (γ=2.0, α=0.25) do NOT work well at moderate imbalance (1:10)**
+2. **FL shows strong improvement ONLY at 1:50 sampling** (+26.79% NDCG)
+3. **Alpha-BCE outperforms FL at 1:10**, suggesting class weighting alone suffices at this ratio
+4. **Grid search shows tuned FL can beat BCE at all ratios**, but optimal params vary significantly
+5. **Statistical validation NOT completed** - requires fixing scipy code and re-running
 
 ---
 
-## Hypotheses Tested
+## Hypotheses Tested (Single-Seed Results - NOT Statistically Validated)
 
-| Hypothesis | Description | Result |
-|------------|-------------|--------|
-| **H1 (Efficacy)** | Focal Loss improves NeuMF over BCE | **SUPPORTED** at 1:50 (+9.98% NDCG, +13.24% HR) - *awaiting statistical validation* |
-| **H2 (Robustness)** | Improvements hold across sampling ratios | **PARTIALLY SUPPORTED** (2/3 ratios: 1:4, 1:50) |
-| **H3 (Mechanism)** | Focusing effect (gamma > 0) is necessary | **PENDING** - *requires 10-seed Wilcoxon test* |
-
----
-
-## Primary Results (1:50 Sampling - Realistic Imbalance)
-
-| Metric | BCE | FocalLoss (γ=2, α=0.25) | Improvement |
-|--------|-----|-------------------------|-------------|
-| NDCG@10 | 0.0541 | **0.0595** | **+9.98%** |
-| HR@10 | 0.1125 | **0.1274** | **+13.24%** |
-
-**Key Finding**: At realistic imbalance (1:50), Focal Loss with default parameters outperforms BCE, supporting H1.
-
-### Best Tuned Configuration (1:50)
-
-| Metric | BCE | FL (γ=1.0, α=0.50) | Improvement |
-|--------|-----|--------------------|-------------|
-| NDCG@10 | 0.0541 | **0.0680** | **+25.7%** |
-| HR@10 | 0.1125 | **0.1253** | **+11.4%** |
-
-With tuned hyperparameters, improvement increases substantially.
+| Hypothesis | Description | Result (Single Seed) |
+|------------|-------------|----------------------|
+| **H1 (Efficacy)** | Focal Loss improves NeuMF over BCE | **NOT SUPPORTED at 1:10** (-2.59% NDCG); **SUPPORTED at 1:50** (+26.79% NDCG) |
+| **H2 (Robustness)** | Improvements hold across sampling ratios | **NOT SUPPORTED** (wins only at 1/3 ratios) |
+| **H3 (Mechanism)** | Focusing effect (gamma > 0) is necessary | **NOT SUPPORTED** - Alpha-BCE beats FL at 1:10 |
 
 ---
 
-## Secondary Results (1:10 Sampling)
+## Primary Results (1:10 Sampling)
 
-| Metric | BCE | AlphaBCE | FocalLoss |
-|--------|-----|----------|-----------|
-| HIT@5 | 0.0669 | 0.0690 | 0.0669 |
-| HIT@10 | 0.1157 | **0.1231** | 0.1062 |
-| HIT@20 | 0.1773 | **0.1953** | 0.1943 |
-| NDCG@5 | 0.0418 | 0.0425 | 0.0428 |
-| NDCG@10 | 0.0575 | **0.0600** | 0.0556 |
-| NDCG@20 | 0.0731 | **0.0780** | 0.0778 |
+| Metric | BCE | Alpha-BCE | Focal Loss (γ=2, α=0.25) |
+|--------|-----|-----------|--------------------------|
+| HIT@5 | 0.0616 | 0.0669 | 0.0701 |
+| HIT@10 | 0.1125 | **0.1231** | 0.1115 |
+| HIT@20 | 0.1794 | **0.1921** | 0.1921 |
+| NDCG@5 | 0.0415 | 0.0416 | **0.0433** |
+| NDCG@10 | 0.0579 | **0.0598** | 0.0564 |
+| NDCG@20 | 0.0746 | **0.0770** | 0.0767 |
 
-**Note**: At 1:10 sampling, Alpha-BCE outperforms Focal Loss. This intermediate ratio appears to be a "sweet spot" where class weighting alone suffices.
+### Improvement Analysis
+
+**H1: Focal Loss vs BCE**
+- NDCG@10: 0.0579 → 0.0564 (**-2.59%**)
+- HIT@10: 0.1125 → 0.1115 (**-0.89%**)
+
+**H3: Focal Loss vs Alpha-BCE**
+- NDCG@10: 0.0598 → 0.0564 (**-5.69%**)
+- HIT@10: 0.1231 → 0.1115 (**-9.42%**)
+
+**Conclusion at 1:10**: Focal Loss does NOT improve over BCE, and Alpha-BCE (class weighting only) outperforms both.
 
 ---
 
 ## Robustness Study: Multiple Sampling Ratios
 
-| Sampling | BCE NDCG@10 | FL NDCG@10 | Improvement | BCE HR@10 | FL HR@10 | HR Improvement |
-|----------|-------------|------------|-------------|-----------|----------|----------------|
-| 1:4 | 0.0524 | **0.0607** | **+15.84%** | 0.0998 | **0.1263** | **+26.55%** |
-| 1:10 | **0.0575** | 0.0556 | -3.30% | **0.1157** | 0.1062 | -8.21% |
-| **1:50 (Primary)** | 0.0541 | **0.0595** | **+9.98%** | 0.1125 | **0.1274** | **+13.24%** |
+| Sampling | BCE NDCG@10 | FL NDCG@10 | NDCG Change | BCE HR@10 | FL HR@10 | HR Change |
+|----------|-------------|------------|-------------|-----------|----------|-----------|
+| **1:4** | 0.0640 | 0.0604 | **-5.62%** | 0.1263 | 0.1242 | **-1.66%** |
+| **1:10** | 0.0579 | 0.0564 | **-2.59%** | 0.1125 | 0.1115 | **-0.89%** |
+| **1:50** | 0.0530 | **0.0672** | **+26.79%** | 0.1083 | **0.1231** | **+13.67%** |
 
-**Focal Loss wins at 2/3 sampling ratios** (1:4 and 1:50). The 1:10 ratio appears to be an anomalous middle ground where neither extreme imbalance handling nor simple BCE dominates.
-
----
-
-## Alpha-Sampling Interaction Analysis
-
-The alpha parameter and sampling ratio interact in non-obvious ways:
-
-| Neg Ratio | Alpha | Effective Negative:Positive Ratio | Balanced Alpha |
-|-----------|-------|-----------------------------------|----------------|
-| 1:4 | 0.25 | 12.0:1 | 0.80 |
-| 1:4 | 0.50 | 4.0:1 | 0.80 |
-| 1:10 | 0.25 | 30.0:1 | 0.91 |
-| 1:10 | 0.50 | 10.0:1 | 0.91 |
-| 1:50 | 0.25 | 150.0:1 | 0.98 |
-| 1:50 | 0.50 | 50.0:1 | 0.98 |
-
-**Formula**: `Effective Ratio = ((1-alpha) × neg_ratio) / alpha`
-
-Using alpha=0.25 with 1:10 sampling creates a 30:1 effective negative dominance, which may be too extreme.
+**Key Finding**: With default parameters (γ=2.0, α=0.25), Focal Loss **ONLY improves at extreme imbalance (1:50)**. It actually hurts performance at 1:4 and 1:10.
 
 ---
 
-## Grid Search Results
+## Grid Search Results (36 Configurations)
 
 ### Full Results Table
 
 | Ratio | Gamma | Alpha | NDCG@10 | HR@10 |
 |-------|-------|-------|---------|-------|
-| 4 | 0.5 | 0.25 | 0.0603 | 0.1242 |
-| 4 | 0.5 | 0.50 | 0.0645 | 0.1274 |
-| 4 | 0.5 | 0.75 | **0.0657** | **0.1316** |
-| 4 | 1.0 | 0.25 | 0.0579 | 0.1178 |
-| 4 | 1.0 | 0.50 | 0.0586 | 0.1125 |
-| 4 | 1.0 | 0.75 | 0.0617 | 0.1231 |
-| 4 | 2.0 | 0.25 | 0.0607 | 0.1263 |
-| 4 | 2.0 | 0.50 | 0.0653 | 0.1253 |
-| 4 | 2.0 | 0.75 | 0.0612 | 0.1231 |
-| 4 | 3.0 | 0.25 | 0.0630 | 0.1253 |
-| 4 | 3.0 | 0.50 | 0.0646 | 0.1242 |
-| 4 | 3.0 | 0.75 | 0.0525 | 0.1030 |
-| 10 | 0.5 | 0.25 | 0.0529 | 0.1083 |
-| 10 | 0.5 | 0.50 | **0.0627** | **0.1221** |
-| 10 | 0.5 | 0.75 | 0.0533 | 0.1083 |
-| 10 | 1.0 | 0.25 | 0.0592 | 0.1115 |
-| 10 | 1.0 | 0.50 | 0.0617 | 0.1168 |
-| 10 | 1.0 | 0.75 | 0.0515 | 0.1019 |
-| 10 | 2.0 | 0.25 | 0.0556 | 0.1062 |
-| 10 | 2.0 | 0.50 | 0.0548 | 0.1051 |
-| 10 | 2.0 | 0.75 | 0.0441 | 0.0796 |
-| 10 | 3.0 | 0.25 | 0.0544 | 0.1040 |
-| 10 | 3.0 | 0.50 | 0.0529 | 0.1030 |
-| 10 | 3.0 | 0.75 | 0.0533 | 0.1030 |
-| 50 | 0.5 | 0.25 | 0.0524 | 0.1030 |
-| 50 | 0.5 | 0.50 | 0.0549 | 0.1040 |
-| 50 | 0.5 | 0.75 | 0.0602 | 0.1178 |
-| 50 | 1.0 | 0.25 | 0.0555 | 0.1093 |
-| 50 | 1.0 | 0.50 | **0.0680** | **0.1253** |
-| 50 | 1.0 | 0.75 | 0.0562 | 0.1093 |
-| 50 | 2.0 | 0.25 | 0.0595 | 0.1274 |
-| 50 | 2.0 | 0.50 | 0.0588 | 0.1125 |
-| 50 | 2.0 | 0.75 | 0.0563 | 0.1062 |
-| 50 | 3.0 | 0.25 | 0.0598 | 0.1178 |
-| 50 | 3.0 | 0.50 | 0.0528 | 0.1115 |
-| 50 | 3.0 | 0.75 | 0.0615 | 0.1263 |
+| 4 | 0.5 | 0.25 | 0.0636 | 0.1253 |
+| 4 | 0.5 | 0.50 | **0.0708** | **0.1316** |
+| 4 | 0.5 | 0.75 | 0.0563 | 0.1115 |
+| 4 | 1.0 | 0.25 | 0.0626 | 0.1221 |
+| 4 | 1.0 | 0.50 | 0.0577 | 0.1189 |
+| 4 | 1.0 | 0.75 | 0.0649 | 0.1274 |
+| 4 | 2.0 | 0.25 | 0.0604 | 0.1242 |
+| 4 | 2.0 | 0.50 | 0.0563 | 0.1093 |
+| 4 | 2.0 | 0.75 | 0.0609 | 0.1221 |
+| 4 | 3.0 | 0.25 | 0.0624 | 0.1178 |
+| 4 | 3.0 | 0.50 | 0.0627 | 0.1221 |
+| 4 | 3.0 | 0.75 | 0.0533 | 0.1051 |
+| 10 | 0.5 | 0.25 | 0.0576 | 0.1146 |
+| 10 | 0.5 | 0.50 | 0.0602 | 0.1178 |
+| 10 | 0.5 | 0.75 | 0.0556 | 0.1062 |
+| 10 | 1.0 | 0.25 | 0.0600 | 0.1231 |
+| 10 | 1.0 | 0.50 | **0.0610** | **0.1221** |
+| 10 | 1.0 | 0.75 | 0.0539 | 0.1019 |
+| 10 | 2.0 | 0.25 | 0.0564 | 0.1115 |
+| 10 | 2.0 | 0.50 | 0.0552 | 0.1051 |
+| 10 | 2.0 | 0.75 | 0.0572 | 0.1157 |
+| 10 | 3.0 | 0.25 | 0.0441 | 0.0892 |
+| 10 | 3.0 | 0.50 | 0.0540 | 0.1051 |
+| 10 | 3.0 | 0.75 | 0.0528 | 0.1019 |
+| 50 | 0.5 | 0.25 | 0.0590 | 0.1168 |
+| 50 | 0.5 | 0.50 | 0.0556 | 0.1008 |
+| 50 | 0.5 | 0.75 | 0.0569 | 0.1083 |
+| 50 | 1.0 | 0.25 | 0.0569 | 0.1136 |
+| 50 | 1.0 | 0.50 | 0.0628 | 0.1285 |
+| 50 | 1.0 | 0.75 | 0.0582 | 0.1104 |
+| 50 | 2.0 | 0.25 | **0.0672** | **0.1231** |
+| 50 | 2.0 | 0.50 | 0.0567 | 0.1168 |
+| 50 | 2.0 | 0.75 | 0.0618 | 0.1136 |
+| 50 | 3.0 | 0.25 | 0.0607 | 0.1200 |
+| 50 | 3.0 | 0.50 | 0.0567 | 0.1200 |
+| 50 | 3.0 | 0.75 | 0.0637 | 0.1200 |
 
 ### Best Configurations Per Sampling Ratio
 
 | Sampling | Best Gamma | Best Alpha | NDCG@10 | HR@10 | vs BCE Baseline |
 |----------|------------|------------|---------|-------|-----------------|
-| **1:4** | 0.5 | 0.75 | 0.0657 | 0.1316 | +25.4% NDCG |
-| **1:10** | 0.5 | 0.50 | 0.0627 | 0.1221 | +9.0% NDCG |
-| **1:50** | 1.0 | 0.50 | 0.0680 | 0.1253 | +25.7% NDCG |
+| **1:4** | 0.5 | 0.50 | 0.0708 | 0.1316 | **+10.6% NDCG** |
+| **1:10** | 1.0 | 0.50 | 0.0610 | 0.1221 | **+5.4% NDCG** |
+| **1:50** | 2.0 | 0.25 | 0.0672 | 0.1231 | **+26.8% NDCG** |
+
+**Key Insight**: With proper hyperparameter tuning, FL can beat BCE at all ratios. However, optimal parameters are **very different** from CV defaults.
+
+### FL Win Rate Analysis
+
+- **Focal Loss beats BCE baseline**: 17/36 configurations (47.2%) for both NDCG@10 and HR@10
+- This near-50% win rate suggests **hyperparameter sensitivity**, not systematic improvement
+
+---
+
+## Execution Status
+
+### Cells That Ran Successfully
+| Cell | Description | Status |
+|------|-------------|--------|
+| 1-8 | Setup, imports, configuration | ✓ Complete |
+| 9 | BCE baseline (1:10) | ✓ Complete |
+| 10 | Alpha-BCE (1:10) | ✓ Complete |
+| 11 | Focal Loss (1:10) | ✓ Complete |
+| 12 | Primary comparison | ✓ Complete |
+| 13-14 | Robustness (1:4, 1:50) | ✓ Complete |
+| 15-17 | Training dynamics | ✓ Complete |
+| 18 | Grid search | ✓ Complete |
+| 19 | Statistical analysis | **FAILED** (scipy.stats.binom_test deprecated) |
+
+### Cells That Did NOT Run
+| Cell | Description | Status |
+|------|-------------|--------|
+| 20+ | Wilcoxon signed-rank test | NOT EXECUTED |
+| - | Multi-seed experiments | NOT EXECUTED |
+| - | Final statistical conclusions | NOT EXECUTED |
 
 ---
 
 ## Key Insights
 
-### 1. Default Parameters Don't Transfer from Computer Vision
-The default gamma=2.0, alpha=0.25 from Lin et al.'s object detection paper performs poorly for recommendation. Lower gamma (0.5-1.0) and higher alpha (0.5-0.75) work better.
+### 1. Default Parameters Fail at Moderate Imbalance
+The CV defaults (γ=2.0, α=0.25) hurt performance at 1:4 and 1:10 sampling. They only help at extreme imbalance (1:50).
 
-### 2. Alpha Matters More Than Gamma (Based on Single-Seed Results)
-- Alpha-BCE (γ=0) often matches or outperforms full Focal Loss at 1:10
-- At 1:50, FL outperforms BCE, but H3 (FL vs α-BCE) needs multi-seed validation
-- Run Wilcoxon test to determine if focusing mechanism provides additional benefit
+### 2. Alpha-BCE Often Beats Full Focal Loss
+At 1:10 sampling, Alpha-BCE (γ=0, α=0.25) achieves NDCG@10=0.0598, beating FL's 0.0564. This suggests class weighting is more important than the focusing mechanism.
 
-### 3. Optimal Hyperparameters Vary by Sampling Ratio
-No single (gamma, alpha) configuration works best across all ratios:
-- 1:4 → gamma=0.5, alpha=0.75
-- 1:10 → gamma=0.5, alpha=0.50
-- 1:50 → gamma=1.0, alpha=0.50
+### 3. Optimal Hyperparameters Vary Dramatically by Ratio
+- 1:4 → γ=0.5, α=0.50 (low focusing, balanced weighting)
+- 1:10 → γ=1.0, α=0.50 (moderate focusing, balanced weighting)
+- 1:50 → γ=2.0, α=0.25 (high focusing, negative dominance)
 
-### 4. Focal Loss Helps at Extreme Ratios
-Focal Loss with tuned parameters shows strongest improvements at 1:4 (+25%) and 1:50 (+26%), but modest gains at 1:10 (+9%).
+### 4. High Gamma + Low Alpha Works at Extreme Imbalance
+At 1:50, the default CV parameters work well because extreme imbalance requires aggressive down-weighting of easy (negative) examples.
 
-### 5. High Gamma + High Alpha is Unstable
-The combination of gamma=3.0 with alpha=0.75 produces poor results across all ratios, likely due to excessive down-weighting of all examples.
+### 5. Single-Seed Results Are Insufficient
+Without the Wilcoxon test, we cannot make statistically valid claims. The ~50% FL win rate suggests high variance.
 
 ---
 
-## Explanation of Results
+## What Additional Analysis Is Needed
 
-The results reveal a nuanced picture of Focal Loss for recommendation:
+### Critical (Required for Paper)
 
-**Why default parameters fail**: The alpha=0.25 setting from computer vision creates an effective 30:1 negative dominance at 1:10 sampling (formula: `(1-0.25) × 10 / 0.25 = 30`). This overwhelms the positive signal even more than standard BCE.
+1. **Fix scipy.stats Error**
+   - Replace `stats.binom_test()` with `stats.binomtest()` (scipy ≥ 1.9)
+   - Re-run cells 19+
 
-**Why tuned Focal Loss helps**: With alpha=0.5, the effective ratio drops to 10:1, matching the actual sampling ratio. Combined with mild focusing (gamma=0.5-1.0), this provides balanced training.
+2. **Complete Wilcoxon Signed-Rank Test**
+   - Run 10-seed experiments for BCE, Alpha-BCE, and FL
+   - Primary comparison: 1:50 sampling (where FL shows improvement)
+   - Compute p-values with Bonferroni correction (α = 0.05/4 = 0.0125)
 
-**Whether focusing mechanism helps**: This requires multi-seed validation. At 1:10, α-BCE matches FL, suggesting class weighting alone may suffice. At 1:50, FL shows improvement over BCE, but comparison with α-BCE needs the Wilcoxon test to determine if the focusing effect (γ > 0) provides additional benefit.
+3. **H3 Mechanism Test**
+   - Compare FL vs Alpha-BCE at 1:50 to determine if focusing effect (γ > 0) provides benefit beyond class weighting
 
-**Practical recommendation**: For practitioners:
-1. Start with gamma=0.5, alpha=0.5 as a baseline
-2. Tune alpha based on your negative sampling ratio
-3. The focusing effect is secondary to proper class weighting
+### Recommended (Strengthen Claims)
 
----
+4. **Tuned FL vs BCE Comparison**
+   - Run Wilcoxon test comparing best-tuned FL (γ=2.0, α=0.25 at 1:50) vs BCE
+   - This is the fairest comparison showing FL potential
 
-## Comparison with Original Approach
-
-| Aspect | Original (main.tex) | Improved (suggestions.tex) |
-|--------|---------------------|---------------------------|
-| **Primary Sampling** | 1:4 (low imbalance) | 1:50 (realistic imbalance) |
-| **Would report** | "FL improves NeuMF" (limited scope) | "FL improves at high imbalance (+10-26%)" |
-| **Alpha-BCE control** | Not included | Isolates focusing vs weighting effects |
-| **Mechanism insight** | Assumed gamma helps | Shows alpha critical, gamma secondary |
-| **Robustness** | Not tested | Tested across 3 ratios with clear pattern |
-| **Statistical validation** | Not specified | Wilcoxon test with Bonferroni correction |
-
-The improved methodology provides stronger, more defensible claims by using realistic imbalance and proper controls.
+5. **Alpha-Sampling Interaction Analysis**
+   - Systematic study of how α should vary with sampling ratio
+   - Propose adaptive α formula for practitioners
 
 ---
 
-## Recommendations for the Paper
+## Conclusions
 
-1. **Lead with 1:50 results**: Focal Loss shows clear improvement (+10% NDCG, +13% HR) at realistic imbalance
-2. **Highlight the alpha-sampling interaction**: This is a genuine contribution explaining why CV defaults fail
-3. **Report tuned configurations**: γ=0.5-1.0 and α=0.5-0.75 consistently outperform defaults
-4. **Include statistical validation**: Wilcoxon test with effect sizes strengthens claims
-5. **Acknowledge the 1:10 anomaly**: Be transparent that FL underperforms at moderate imbalance
-6. **Practical guidance**: Recommend α = r/(r+1) formula for practitioners to compute balanced alpha
+### What the Results Show
+
+1. **H1 (Efficacy)**: PARTIALLY SUPPORTED
+   - FL with default params: Only works at 1:50 (+26.8%), fails at 1:4 and 1:10
+   - FL with tuned params: Works at all ratios, but requires significant tuning
+
+2. **H2 (Robustness)**: NOT SUPPORTED
+   - Default FL does not robustly improve across sampling ratios
+   - Only 1/3 ratios show improvement
+
+3. **H3 (Mechanism)**: LIKELY NOT SUPPORTED (needs Wilcoxon validation)
+   - Alpha-BCE matches or beats FL at moderate imbalance
+   - The focusing effect may only matter at extreme imbalance
+
+### Practical Recommendations
+
+1. **For extreme imbalance (1:50+)**: Use FL with γ=2.0, α=0.25 (default CV params)
+2. **For moderate imbalance (1:10)**: Use Alpha-BCE or tune FL with γ=1.0, α=0.50
+3. **For low imbalance (1:4)**: Use FL with γ=0.5, α=0.50
+
+### Paper Strategy
+
+Given the mixed results, the paper should:
+1. **Focus on 1:50 results** where FL clearly wins (+26.8%)
+2. **Be transparent about hyperparameter sensitivity**
+3. **Position the contribution as understanding WHEN FL helps**, not claiming universal improvement
+4. **Complete statistical validation before publishing**
 
 ---
 
-## Statistical Significance Testing
+## Next Steps
 
-### Methodology: Wilcoxon Signed-Rank Test
-
-To ensure reliable conclusions, we employ rigorous statistical testing:
-
-| Parameter | Value |
-|-----------|-------|
-| **Test** | Wilcoxon signed-rank test (non-parametric, paired) |
-| **Seeds** | 10 random seeds (42-51) |
-| **Comparisons** | FL vs BCE, FL vs α-BCE (2 metrics each = 4 tests) |
-| **Correction** | Bonferroni (α = 0.05/4 = 0.0125) |
-| **Effect Size** | Rank-biserial correlation (r) |
-
-**Effect Size Interpretation**:
-- |r| < 0.1: Negligible
-- 0.1 ≤ |r| < 0.3: Small
-- 0.3 ≤ |r| < 0.5: Medium
-- |r| ≥ 0.5: Large
-
-### Results (1:50 Sampling, Primary Experiment)
-
-> **⚠️ PENDING: Run 10-seed experiments to populate actual values**
->
-> To get real statistical results:
-> 1. Set `REUSE_RESULTS = False` in notebook cell 37
-> 2. Run cells 37-42 (takes ~30 training runs)
-> 3. Update this section with printed results
-
-#### H1: Focal Loss vs BCE
-
-| Metric | BCE (mean±std) | FL (mean±std) | Change | p-value | Effect (r) | Significant? |
-|--------|----------------|---------------|--------|---------|------------|--------------|
-| NDCG@10 | *run experiment* | *run experiment* | *pending* | *pending* | *pending* | *pending* |
-| HR@10 | *run experiment* | *run experiment* | *pending* | *pending* | *pending* | *pending* |
-
-#### H3: Focal Loss vs Alpha-BCE (Mechanism)
-
-| Metric | α-BCE (mean±std) | FL (mean±std) | Change | p-value | Effect (r) | Significant? |
-|--------|------------------|---------------|--------|---------|------------|--------------|
-| NDCG@10 | *run experiment* | *run experiment* | *pending* | *pending* | *pending* | *pending* |
-| HR@10 | *run experiment* | *run experiment* | *pending* | *pending* | *pending* | *pending* |
-
-### Expected Results (Based on Single-Seed Grid Search)
-
-From the grid search at 1:50 (single seed), we observed:
-- **FL vs BCE**: +9.98% NDCG, +13.24% HR
-- **Best tuned FL vs BCE**: +25.7% NDCG (γ=1.0, α=0.50)
-
-If these improvements are consistent across 10 seeds, we expect:
-- H1 to be statistically supported
-- H3 outcome depends on α-BCE performance (needs testing)
+1. Fix `scipy.stats.binom_test` → `scipy.stats.binomtest` in cell 19
+2. Re-run notebook from cell 19 onwards
+3. Complete 10-seed Wilcoxon test
+4. Update this results file with statistical significance values
+5. Decide on paper narrative based on validated results
