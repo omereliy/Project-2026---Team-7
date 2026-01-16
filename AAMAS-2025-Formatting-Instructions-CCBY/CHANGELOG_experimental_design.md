@@ -326,40 +326,65 @@ Ratio | Imbalance | BCE     | α-BCE   | FL
 
 ## Empirical Support for Changes
 
-The proposed changes are supported by experimental results from `ml100k_improved.ipynb`:
+The proposed changes are supported by experimental results from `ml100k_improved.ipynb`.
 
-### Primary Results at Different Sampling Ratios
+**⚠️ IMPORTANT: Notebook stopped at cell 19 due to scipy API error. Wilcoxon statistical test was NOT executed. All results below are single-seed only.**
 
-| Sampling | BCE NDCG@10 | FL NDCG@10 | Improvement |
-|----------|-------------|------------|-------------|
-| 1:4      | 0.0524      | 0.0607     | **+15.84%** |
-| 1:10     | 0.0575      | 0.0556     | -3.30%      |
-| 1:50     | 0.0541      | 0.0595     | **+9.98%**  |
+### Primary Results at Different Sampling Ratios (Default FL: γ=2.0, α=0.25)
 
-**Observation**: FL outperforms BCE at 1:4 and 1:50, but not at 1:10. This supports using 1:50 as primary (realistic imbalance where FL helps).
+| Sampling | BCE NDCG@10 | FL NDCG@10 | Change |
+|----------|-------------|------------|--------|
+| 1:4      | 0.0640      | 0.0604     | **-5.62%** |
+| 1:10     | 0.0579      | 0.0564     | **-2.59%** |
+| 1:50     | 0.0530      | 0.0672     | **+26.79%** |
+
+**Observation**: With default parameters, FL **only outperforms BCE at 1:50** (extreme imbalance). It actually hurts performance at 1:4 and 1:10. This strongly supports using 1:50 as primary condition where FL's design purpose is met.
 
 ### Best Hyperparameters per Sampling Ratio
 
-| Sampling | Best γ | Best α | NDCG@10 | vs BCE |
-|----------|--------|--------|---------|--------|
-| 1:4      | 0.5    | 0.75   | 0.0657  | +25.4% |
-| 1:10     | 0.5    | 0.50   | 0.0627  | +9.0%  |
-| 1:50     | 1.0    | 0.50   | 0.0680  | +25.7% |
+| Sampling | Best γ | Best α | NDCG@10 | vs BCE Baseline |
+|----------|--------|--------|---------|-----------------|
+| 1:4      | 0.5    | 0.50   | 0.0708  | **+10.6%** |
+| 1:10     | 1.0    | 0.50   | 0.0610  | **+5.4%** |
+| 1:50     | 2.0    | 0.25   | 0.0672  | **+26.8%** |
 
 **Observation**:
-- Optimal γ is lower (0.5–1.0) than default (2.0)
-- Optimal α is higher (0.5–0.75) than default (0.25)
-- This supports the alpha-sampling interaction analysis
+- With tuned parameters, FL can beat BCE at all ratios
+- Optimal γ varies: 0.5 (low imbalance) to 2.0 (high imbalance)
+- α=0.50 works better than α=0.25 at lower imbalance ratios
+- Default CV parameters (γ=2.0, α=0.25) only work well at 1:50
 
-### α-BCE Control Results (1:10)
+### α-BCE Control Results (1:10 Primary Experiment)
 
 | Model | NDCG@10 | HR@10 |
 |-------|---------|-------|
-| BCE | 0.0575 | 0.1157 |
-| α-BCE (α=0.25) | **0.0600** | **0.1231** |
-| Focal Loss (γ=2, α=0.25) | 0.0556 | 0.1062 |
+| BCE | 0.0579 | 0.1125 |
+| α-BCE (γ=0, α=0.25) | **0.0598** | **0.1231** |
+| Focal Loss (γ=2, α=0.25) | 0.0564 | 0.1115 |
 
-**Observation**: α-BCE outperforms both BCE and FL at 1:10, suggesting class weighting alone can be sufficient. This validates including α-BCE as a control condition.
+**Observation**: At 1:10 sampling, α-BCE **outperforms both BCE and FL**. This suggests:
+1. Class weighting (α) is more important than focusing (γ) at moderate imbalance
+2. H3 (mechanism hypothesis) is NOT supported at 1:10
+3. The focusing mechanism may only provide benefit at extreme imbalance (1:50)
+
+### FL Win Rate from Grid Search
+
+- FL beats BCE baseline in **17/36 configurations (47.2%)** for both NDCG@10 and HR@10
+- This near-50% rate indicates **hyperparameter sensitivity**, not systematic improvement
+
+### Hypothesis Status (Single-Seed, NOT Statistically Validated)
+
+| Hypothesis | Status | Evidence |
+|------------|--------|----------|
+| **H1 (Efficacy)** | **PARTIAL** | NOT SUPPORTED at 1:10 (-2.59%), SUPPORTED at 1:50 (+26.79%) |
+| **H2 (Robustness)** | **NOT SUPPORTED** | FL wins at only 1/3 sampling ratios with default params |
+| **H3 (Mechanism)** | **NOT SUPPORTED** | α-BCE beats FL at 1:10 (-5.69% relative) |
+
+### Required Next Steps
+
+1. **Fix scipy error**: Replace `stats.binom_test()` → `stats.binomtest()` in cell 19
+2. **Complete Wilcoxon test**: Run 10-seed experiments at 1:50 for statistical validation
+3. **Test H3 at 1:50**: Compare FL vs α-BCE where FL shows promise
 
 ---
 
@@ -389,4 +414,22 @@ We recommend adopting these changes because:
 4. **Reproducibility**: Alpha-sampling analysis provides guidance for hyperparameter selection
 5. **Statistical validity**: Enhanced testing protocol with effect sizes
 
-The experimental notebook (`ml100k_improved.ipynb`) demonstrates that these changes lead to more nuanced and defensible conclusions than the original design.
+### Updated Recommendation Based on Actual Results
+
+The experimental notebook (`ml100k_improved.ipynb`) reveals **more nuanced findings** than originally anticipated:
+
+**For the paper narrative:**
+1. **Focus on 1:50 results** - This is where FL shows clear improvement (+26.79%)
+2. **Be transparent about hyperparameter sensitivity** - Default CV parameters don't transfer well
+3. **Reframe H3** - Test at 1:50 where FL works, not 1:10 where α-BCE dominates
+4. **Position contribution** as understanding WHEN FL helps, not claiming universal improvement
+
+**Critical action items:**
+1. Fix scipy API error and complete statistical validation
+2. Run H3 test at 1:50 to determine if focusing mechanism matters at extreme imbalance
+3. Consider narrowing claims to "FL improves NCF under extreme class imbalance"
+
+**Revised hypothesis expectations:**
+- H1: Likely SUPPORTED at 1:50 (pending Wilcoxon)
+- H2: May need reframing (FL helps at extreme imbalance, not universally)
+- H3: Needs testing at 1:50 (likely not supported at moderate imbalance)
