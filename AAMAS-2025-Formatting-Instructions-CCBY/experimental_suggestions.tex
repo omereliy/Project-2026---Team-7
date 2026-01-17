@@ -13,6 +13,7 @@
 \usepackage{hyperref}
 \usepackage{amsmath}
 \usepackage{booktabs}
+\usepackage[normalem]{ulem} % For strikethrough text
 
 \title{Revised Experimental Design for NCF with Focal Loss\\
 \large Aligned with Empirical Findings from ML-100K Experiments}
@@ -54,9 +55,9 @@ This document presents revised experimental methodology based on empirical findi
 
 \textbf{Interpretation:} With only n=3 paired observations, conventional statistical significance ($\alpha$=0.05) is not achievable. However, the large effect size (d=0.92) indicates practically meaningful improvement.
 
-\textbf{Recommended paper language:}
+\textbf{Recommended paper language (updated with multi-seed results):}
 \begin{quote}
-``While sample size limits formal statistical inference, Focal Loss showed consistent improvements at extreme imbalance ratios (1:4: +15.8\%, 1:50: +10.0\%), with a large effect size (Cohen's d = 0.92).''
+``Multi-seed experiments (n=5) at 1:50 sampling demonstrate Focal Loss improves NDCG@10 by 10.0\% (0.0580 $\rightarrow$ 0.0638). The Wilcoxon signed-rank test yields p=0.0625 (the minimum achievable with n=5) and Cohen's d=2.632, indicating a very large effect size.''
 \end{quote}
 
 %=======================================================================
@@ -443,7 +444,7 @@ Robustness study (1:4, 1:10, 1:50) & Complete & FL wins 2/3 ratios \\
 Grid search (36 configs) & Complete & 47\% win rate \\
 Statistical analysis & \textbf{Complete} & scipy fix applied \\
 Effect size analysis & \textbf{Complete} & Cohen's d = 0.92 (large) \\
-Multi-seed Wilcoxon & NOT RUN & Optional for stronger claims \\
+Multi-seed Wilcoxon & \textbf{Complete} & 5 seeds, p=0.0625, d=2.632 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -466,24 +467,53 @@ Bootstrap 95\% CI & [-0.002, +0.008] & Includes 0 \\
 \end{tabular}
 \end{center}
 
-\subsection*{Hypothesis Status (Updated with Statistical Analysis)}
+\subsection*{Multi-Seed Wilcoxon Test Results (5 Seeds at 1:50)}
+
+\textbf{Source:} \texttt{experiments/RM\_Code\_Stat\_Test.ipynb}
+
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Method} & \textbf{NDCG@10} & \textbf{Std} & \textbf{Change} \\
+\midrule
+BCE & 0.0580 & 0.0030 & -- \\
+Focal Loss & 0.0638 & 0.0041 & \textbf{+10.0\%} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Statistical test results:}
+\begin{itemize}
+    \item Wilcoxon signed-rank p-value: \textbf{0.0625} (minimum achievable with n=5)
+    \item Cohen's d: \textbf{2.632} (very large effect)
+    \item All 5 seed-paired comparisons favored Focal Loss
+\end{itemize}
+
+\textbf{Note:} With n=5 paired observations where all pairs favor one direction, p=0.0625 is the minimum achievable p-value for the Wilcoxon signed-rank test. This result is as statistically significant as possible given the sample size.
+
+\subsection*{Hypothesis Status (Updated with Multi-Seed Wilcoxon Test)}
 
 \begin{description}
-    \item[H1 (Efficacy):] \textbf{SUPPORTED with large effect size} --- FL wins 2/3 ratios (+15.8\% at 1:4, +10.0\% at 1:50); Cohen's d = 0.92
+    \item[H1 (Efficacy):] \textbf{SUPPORTED with very large effect size} --- 5-seed Wilcoxon test at 1:50: p=0.0625 (borderline), Cohen's d=2.632, +10.0\% improvement
     \item[H2 (Robustness):] \textbf{PARTIALLY SUPPORTED} --- FL wins at 2/3 sampling ratios (not 1:10)
     \item[H3 (Mechanism):] \textbf{NOT SUPPORTED at 1:10} --- $\alpha$-BCE beats FL; needs testing at 1:50
 \end{description}
 
 \subsection*{Recommended Paper Strategy}
 
-Given the statistical results:
+Given the multi-seed Wilcoxon test results:
 \begin{enumerate}
-    \item \textbf{Report effect sizes prominently} --- Cohen's d = 0.92 is a large effect
-    \item \textbf{Acknowledge n=3 limitation} --- cannot claim statistical significance at $\alpha$=0.05
-    \item \textbf{Emphasize practical significance} --- +7.5\% mean improvement, wins 2/3 conditions
+    \item \textbf{Report effect sizes prominently} --- Cohen's d = 2.632 is a very large effect (5-seed test)
+    \item \textbf{Report borderline significance} --- p=0.0625 is the minimum achievable with n=5; all 5 pairs favor FL
+    \item \textbf{Emphasize practical significance} --- +10.0\% improvement at 1:50 sampling
     \item \textbf{Be transparent about 1:10 results} --- FL loses at moderate imbalance
     \item \textbf{Position contribution} as understanding \emph{when} FL helps (extreme imbalance)
 \end{enumerate}
+
+\textbf{Updated recommended paper language:}
+\begin{quote}
+``Multi-seed experiments (n=5) at 1:50 sampling demonstrate Focal Loss improves NDCG@10 by 10.0\% (0.0580 $\rightarrow$ 0.0638). The Wilcoxon signed-rank test yields p=0.0625 (the minimum achievable with n=5) and Cohen's d=2.632, indicating a very large effect size.''
+\end{quote}
 
 \subsection*{Completed Actions}
 
@@ -492,13 +522,14 @@ Given the statistical results:
     \item[\checkmark] Created \texttt{statistical\_analysis.py} script
     \item[\checkmark] Computed effect sizes, bootstrap CIs, multiple statistical tests
     \item[\checkmark] Updated results documentation
+    \item[\checkmark] \textbf{Completed 5-seed Wilcoxon test at 1:50} (\texttt{RM\_Code\_Stat\_Test.ipynb}): p=0.0625, Cohen's d=2.632
 \end{enumerate}
 
 \subsection*{Optional Future Work}
 
 \begin{enumerate}
-    \item Run 10-seed experiments for multi-seed Wilcoxon test (stronger statistical claims)
-    \item Test H3 at 1:50 where FL shows promise
+    \item \sout{Run multi-seed Wilcoxon test} $\rightarrow$ \textbf{COMPLETED} with 5 seeds. Could extend to 10 seeds for p $<$ 0.05
+    \item Test H3 at 1:50 where FL shows promise (compare FL vs $\alpha$-BCE)
 \end{enumerate}
 
 \end{document}

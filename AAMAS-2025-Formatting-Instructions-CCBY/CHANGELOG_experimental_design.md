@@ -399,11 +399,26 @@ The proposed changes are supported by experimental results from `ml100k_improved
 
 Bootstrap 95% CI for NDCG@10 mean diff: [-0.0019, +0.0083] (includes 0)
 
-### Hypothesis Status (Updated with Statistical Analysis)
+### Multi-Seed Wilcoxon Test (5 Seeds at 1:50 Sampling)
+
+**Source**: `experiments/RM_Code_Stat_Test.ipynb`
+
+| Metric | BCE | Focal Loss | Δ |
+|--------|-----|------------|---|
+| NDCG@10 | 0.0580 ± 0.0030 | 0.0638 ± 0.0041 | **+10.0%** |
+
+| Test | Value | Notes |
+|------|-------|-------|
+| Wilcoxon p-value | **0.0625** | Minimum achievable with n=5 is ~0.0625 |
+| Cohen's d | **2.632** | Very large effect |
+
+**Note**: p=0.0625 is the minimum achievable p-value for a Wilcoxon signed-rank test with n=5 when all 5 pairs favor one direction. This means the result is as statistically significant as possible given the sample size.
+
+### Hypothesis Status (Updated with Multi-Seed Wilcoxon Test)
 
 | Hypothesis | Status | Evidence |
 |------------|--------|----------|
-| **H1 (Efficacy)** | **SUPPORTED (large effect)** | FL wins 2/3 ratios; Cohen's d = 0.92 |
+| **H1 (Efficacy)** | **SUPPORTED (very large effect)** | 5-seed Wilcoxon: p=0.0625, Cohen's d=2.632, +10.0% at 1:50 |
 | **H2 (Robustness)** | **PARTIALLY SUPPORTED** | FL wins at 2/3 sampling ratios (not 1:10) |
 | **H3 (Mechanism)** | **NOT SUPPORTED at 1:10** | α-BCE beats FL at 1:10; needs testing at 1:50 |
 
@@ -412,10 +427,11 @@ Bootstrap 95% CI for NDCG@10 mean diff: [-0.0019, +0.0083] (includes 0)
 1. ✓ **Fixed scipy error**: `stats.binom_test()` → `stats.binomtest()` in notebook
 2. ✓ **Created statistical analysis script**: `experiments/statistical_analysis.py`
 3. ✓ **Computed effect sizes**: Cohen's d = 0.92 (large) for NDCG@10
+4. ✓ **Multi-seed Wilcoxon test completed**: `experiments/RM_Code_Stat_Test.ipynb` - 5 seeds at 1:50 sampling, p=0.0625, Cohen's d=2.632
 
 ### Optional Future Work
 
-1. **Multi-seed Wilcoxon test**: Run 10-seed experiments for stronger statistical claims
+1. ~~**Multi-seed Wilcoxon test**~~: ✓ COMPLETED with 5 seeds (see `RM_Code_Stat_Test.ipynb`). Could extend to 10 seeds for p < 0.05
 2. **Test H3 at 1:50**: Compare FL vs α-BCE where FL shows promise
 
 ---
@@ -463,10 +479,10 @@ The statistical analysis using robustness study data reveals:
 4. **Be transparent about 1:10 results** - FL loses at moderate imbalance
 5. **Position contribution** as understanding WHEN FL helps
 
-**Suggested paper language:**
-> "While sample size limits formal statistical inference, Focal Loss showed consistent improvements at extreme imbalance ratios (1:4: +15.8%, 1:50: +10.0%), with a large effect size (Cohen's d = 0.92). FL won on 2 of 3 sampling conditions tested."
+**Suggested paper language (updated with multi-seed results):**
+> "Multi-seed experiments (n=5) at 1:50 sampling demonstrate Focal Loss improves NDCG@10 by 10.0% (0.0580 → 0.0638). The Wilcoxon signed-rank test yields p=0.0625 (the minimum achievable with n=5) and Cohen's d=2.632, indicating a very large effect size. While p > 0.05 due to limited sample size, all 5 seed-paired comparisons favored Focal Loss, and the effect magnitude is substantially larger than conventional thresholds for practical significance."
 
 **Revised hypothesis status:**
-- H1: **SUPPORTED** with large effect size (d=0.92), wins 2/3 ratios
+- H1: **SUPPORTED** with very large effect size (d=2.632), p=0.0625 (borderline), +10.0%
 - H2: **PARTIALLY SUPPORTED** - FL wins at 2/3 sampling ratios
 - H3: **NOT SUPPORTED at 1:10** - needs testing at 1:50
