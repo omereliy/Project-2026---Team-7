@@ -17,6 +17,7 @@
 \usepackage{algorithm}
 \usepackage{algorithmic}
 \usepackage{tabularx}
+\usepackage{booktabs}
 
 
 %%% visual coloring for comments with distinct colors per entity for adding notes, todos and reviews necessary to be visualized on pdf.ß
@@ -420,12 +421,17 @@ This section describes the experimental setup designed to evaluate the effective
 \subsection{Research Hypotheses}
 \label{sec:hypotheses}
 
-We formulate the following falsifiable hypotheses:
+We formulate three falsifiable hypotheses to evaluate Focal Loss for collaborative filtering:
 
 \begin{description}
-    \item[H1 (Focal Loss improves NeuMF):] NeuMF trained with Focal Loss achieves statistically significantly higher Hit Rate@10 and NDCG@10 compared to NeuMF trained with Binary Cross-Entropy loss.
-    
+    \item[H1 (Efficacy):] NeuMF trained with Focal Loss achieves statistically significantly higher Hit Rate@10 and NDCG@10 compared to NeuMF trained with Binary Cross-Entropy loss under high class imbalance (1:50 negative sampling).
+
+    \item[H2 (Robustness):] The performance advantage of NeuMF-FL over NeuMF-BCE is maintained across varying negative sampling ratios (1:4, 1:10, 1:50), with the improvement magnitude correlating positively with imbalance severity.
+
+    \item[H3 (Mechanism):] NeuMF with $\gamma > 0$ (full Focal Loss) outperforms NeuMF with $\gamma = 0$ ($\alpha$-balanced BCE) when $\alpha$ is held constant, demonstrating that the focusing mechanism provides benefit beyond class reweighting alone.
 \end{description}
+
+These hypotheses enable independent evaluation of whether Focal Loss improves recommendation quality (H1), whether such improvements are robust to experimental conditions (H2), and whether the focusing mechanism---rather than mere class balancing---drives observed improvements (H3).
 
 \subsection{Datasets}
 \label{sec:datasets}
@@ -452,7 +458,9 @@ ML-1M & 6,040 & 3,706 & 1,000,209 & 4.47\% & 21.4:1 \\
     \item \textbf{Binarization:} Convert explicit ratings to implicit feedback by treating ratings $\geq 4$ as positive interactions ($y=1$) and all others as negative ($y=0$). We adopt this stricter threshold (compared to treating any rating as positive) to focus on items with strong positive signals, reducing label noise from lukewarm interactions that may not reflect genuine preference.
     \item \textbf{Filtering:} Apply 5-core filtering, retaining only users with at least 20 interactions to ensure sufficient training signal per user.
     \item \textbf{Train/Validation/Test Split:} Use leave-one-out evaluation: for each user, the most recent interaction forms the test set, the second-most recent forms the validation set, and all remaining interactions form the training set.
-    \item \textbf{Negative Sampling:} During training, sample 4 negative items per positive interaction. During evaluation, rank each test item against 99 randomly sampled negative items.
+    \item \textbf{Negative Sampling:} We adopt 1:50 negative sampling as the primary experimental condition, sampling 50 negative items per positive interaction during training. This ratio better approximates the severe class imbalance present in production recommendation systems, where users interact with a minuscule fraction of available items. During evaluation, we rank each test item against 99 randomly sampled negative items following standard protocol.
+
+    \textbf{Robustness Study:} To assess sensitivity to sampling ratio, we additionally evaluate at 1:4 (standard in prior NCF literature) and 1:10 (moderate imbalance) ratios.
 \end{enumerate}
 
 \subsection{Implementation Details}
@@ -510,6 +518,7 @@ KNN-User & Traditional & User-based neighborhood & Cosine \\
 SVD & Traditional & Matrix factorization & MSE \\
 MF & Neural & Dot-product embeddings & BCE, BPR, FL \\
 NeuMF & Neural & GMF + MLP hybrid & BCE, BPR, FL \\
+NeuMF-$\alpha$BCE & Neural & GMF + MLP hybrid & $\alpha$-BCE \\
 \hline
 \end{tabularx}
 \end{table}
@@ -550,13 +559,52 @@ Embedding size & \{32, 64, 128\} & Model capacity \\
 MLP layers & \{[64,32], [128,64,32]\} & Network depth \\
 Learning rate & \{0.0001, 0.001, 0.01\} & Optimization speed \\
 Batch size & \{256, 512, 1024\} & GPU utilization \\
-$\gamma$ (focusing) & \{0, 0.5, 1.0, 2.0, 3.0\} & $\gamma{=}0$: BCE \\
-$\alpha$ (balancing) & \{0.25, 0.5, 0.75\} & Class weight \\
+$\gamma$ (focusing) & \{0, 0.5, 1.0, 2.0, 3.0\} & $\gamma{=}0$: $\alpha$-BCE \\
+$\alpha$ (balancing) & \{0.25, 0.5, 0.75\} & See Sec.~\ref{sec:alpha-sampling} \\
 \hline
 \end{tabularx}
 \end{table}
 
+Note that $\gamma = 0$ reduces Focal Loss to $\alpha$-balanced BCE, enabling direct comparison for H3 testing. Based on the alpha-sampling interaction analysis, we anticipate optimal $\alpha$ values will exceed 0.25 for high sampling ratios.
+
 Hyperparameters are tuned on the validation set using grid search. The best configuration is selected based on NDCG@10, and final results are reported on the held-out test set.
+
+\subsubsection{Alpha-Sampling Interaction}
+\label{sec:alpha-sampling}
+
+The $\alpha$ parameter and negative sampling ratio interact non-trivially. We define the \emph{effective class weight ratio} as the ratio of total weight assigned to negative versus positive samples in a training batch:
+\begin{equation}
+R_{\text{eff}} = \frac{(1-\alpha) \times N_{\text{neg}}}{\alpha \times N_{\text{pos}}} = \frac{(1-\alpha) \times r}{\alpha}
+\label{eq:effective-ratio}
+\end{equation}
+where $r$ is the negative sampling ratio.
+
+Table~\ref{tab:alpha-interaction} illustrates this interaction. With $\alpha = 0.25$ and 1:50 sampling, negatives receive 150 times the total weight of positives, potentially overwhelming the positive signal entirely. To achieve balanced effective weighting ($R_{\text{eff}} = 1$), one requires $\alpha = r/(r+1)$; for 1:50 sampling, this corresponds to $\alpha \approx 0.98$.
+
+\begin{table}[h]
+\centering
+\caption{Effective class weight ratio for various $\alpha$ and sampling configurations}
+\label{tab:alpha-interaction}
+\begin{tabular}{ccc}
+\toprule
+\textbf{Sampling} & $\boldsymbol{\alpha}$ & $\boldsymbol{R_{\text{eff}}}$ \\
+\midrule
+1:4  & 0.25 & 12:1 \\
+1:4  & 0.50 & 4:1 \\
+1:4  & 0.75 & 1.3:1 \\
+\midrule
+1:10 & 0.25 & 30:1 \\
+1:10 & 0.50 & 10:1 \\
+1:10 & 0.75 & 3.3:1 \\
+\midrule
+1:50 & 0.25 & 150:1 \\
+1:50 & 0.50 & 50:1 \\
+1:50 & 0.75 & 16.7:1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This analysis motivates our grid search over $\alpha$ values and explains why the default $\alpha = 0.25$ from computer vision applications may require adjustment for recommendation tasks with high negative sampling ratios.
 
 \subsection{Evaluation Protocol}
 \label{sec:evaluation}
@@ -582,15 +630,19 @@ We report results for $K \in \{5, 10, 20\}$, with HR@10 and NDCG@10 as the prima
 \subsection{Statistical Testing}
 \label{sec:statistical-testing}
 
-To ensure reliable conclusions, we employ rigorous statistical testing:
+To ensure reliable conclusions, we employ rigorous statistical testing following recommendations for machine learning experiments~\cite{demvsar2006statistical}:
+
 \begin{itemize}
-    \item \textbf{Multiple Seeds:} Each configuration is run with 10 different random seeds.
-    \item \textbf{Statistical Test:} Wilcoxon signed-rank test~\cite{wilcoxon1945} for paired comparisons (same seed, different methods), as it does not assume normality.
-    \item \textbf{Significance Level:} $p < 0.05$ with Bonferroni correction for multiple comparisons.
-    \item \textbf{Effect Size:} Report Cohen's $d$ or rank-biserial correlation to quantify practical significance.
+    \item \textbf{Multiple Seeds:} Each configuration is evaluated with 5 different random seeds to account for initialization variance.
+
+    \item \textbf{Statistical Test:} We employ the Wilcoxon signed-rank test for paired comparisons (same seed, different methods), as it does not assume normality and is robust to outliers.
+
+    \item \textbf{Multiple Comparison Correction:} Bonferroni correction is applied, yielding a corrected significance threshold of $p < 0.0125$ for four primary comparisons (FL vs BCE on two metrics, FL vs $\alpha$-BCE on two metrics).
+
+    \item \textbf{Effect Size:} We report Cohen's $d$ as the effect size measure for paired samples, with interpretation: $|d| < 0.2$ negligible, $0.2$--$0.5$ small, $0.5$--$0.8$ medium, $> 0.8$ large.
 \end{itemize}
 
-Results are reported as mean $\pm$ standard deviation across seeds.
+Results are reported as mean $\pm$ standard deviation across seeds, with statistical significance indicators.
 
 \subsection{Ablation Study Design}
 \label{sec:ablation}
@@ -602,15 +654,24 @@ To isolate the contribution of each component, we conduct the following ablation
 
     \item \textbf{Focal Loss Component Ablation:}
     \begin{itemize}
-        \item Vary $\gamma \in \{0, 0.5, 1.0, 2.0, 3.0\}$ with fixed $\alpha=0.25$ to analyze the focusing effect ($\gamma=0$ reduces to BCE).
+        \item Vary $\gamma \in \{0, 0.5, 1.0, 2.0, 3.0\}$ with fixed $\alpha=0.25$ to analyze the focusing effect ($\gamma=0$ reduces to $\alpha$-BCE).
         \item Vary $\alpha \in \{0.25, 0.5, 0.75\}$ with fixed $\gamma=2.0$ to analyze the class-balancing effect.
+    \end{itemize}
+
+    \item \textbf{Mechanism Isolation ($\alpha$-BCE Control):} To test H3, we compare full Focal Loss ($\gamma > 0$) against $\alpha$-balanced BCE ($\gamma = 0$) with matched $\alpha$ values. If performance differences are negligible, the focusing mechanism provides no benefit beyond class reweighting; if Focal Loss significantly outperforms $\alpha$-BCE, the focusing mechanism is demonstrably necessary.
+
+    Specifically, we evaluate:
+    \begin{itemize}
+        \item BCE: $\gamma = 0$, $\alpha = 0.5$ (standard)
+        \item $\alpha$-BCE: $\gamma = 0$, $\alpha \in \{0.25, 0.5, 0.75\}$
+        \item Focal Loss: $\gamma \in \{0.5, 1.0, 2.0, 3.0\}$, $\alpha \in \{0.25, 0.5, 0.75\}$
     \end{itemize}
 
     \item \textbf{Architecture Ablation:} Test Focal Loss on GMF-only, MLP-only, and full NeuMF to determine architecture-specific effects.
 
     \item \textbf{Dataset Ablation:} Compare Focal Loss improvements across ML-100K and ML-1M to analyze the correlation between imbalance ratio and performance gain.
 
-    \item \textbf{Negative Sampling Ratio Ablation:} To test H7 (sampling robustness), we train both NeuMF-BCE and NeuMF-FL across varying negative sampling ratios: 1:4 (standard), 1:10 (moderate), and 1:50 (high). This ablation tests whether Focal Loss can effectively filter noise when exposed to higher proportions of negative examples, maintaining performance where BCE-based training degrades. Computational constraints preclude testing the full 1:All ratio; we use 1:50 as a tractable upper bound that still represents a substantial increase in negative exposure.
+    \item \textbf{Negative Sampling Ratio Ablation:} To test H2 (sampling robustness), we train both NeuMF-BCE and NeuMF-FL across varying negative sampling ratios: 1:4 (standard), 1:10 (moderate), and 1:50 (high). This ablation tests whether Focal Loss can effectively filter noise when exposed to higher proportions of negative examples, maintaining performance where BCE-based training degrades. Computational constraints preclude testing the full 1:All ratio; we use 1:50 as a tractable upper bound that still represents a substantial increase in negative exposure.
 \end{enumerate}
 
 Table~\ref{tab:ablation-matrix} summarizes the ablation configurations. Table~\ref{tab:sampling-ablation} presents the negative sampling ratio experimental design.
@@ -620,27 +681,29 @@ Table~\ref{tab:ablation-matrix} summarizes the ablation configurations. Table~\r
 \caption{Ablation study configuration matrix}
 \label{tab:ablation-matrix}
 \begin{tabular}{lccc}
-\hline
-\textbf{Study} & \textbf{BCE} & $\alpha$\textbf{-BCE} & \textbf{Focal Loss} \\
-\hline
-$\gamma$ effect & $\gamma=0$ & $\gamma=0$ & $\gamma \in \{0.5, 1, 2, 3\}$ \\
-$\alpha$ effect & $\alpha=1$ & $\alpha \in \{0.25, 0.5, 0.75\}$ & $\alpha \in \{0.25, 0.5, 0.75\}$ \\
-\hline
+\toprule
+\textbf{Study} & \textbf{BCE} & $\boldsymbol{\alpha}$\textbf{-BCE} & \textbf{Focal Loss} \\
+\midrule
+Baseline & $\gamma=0, \alpha=0.5$ & -- & -- \\
+Class weighting & -- & $\gamma=0, \alpha \in \{0.25, 0.5, 0.75\}$ & -- \\
+Focusing effect & -- & $\gamma=0$ (control) & $\gamma \in \{0.5, 1, 2, 3\}$ \\
+Full grid & -- & -- & $\gamma \times \alpha$ grid \\
+\bottomrule
 \end{tabular}
 \end{table}
 
 \begin{table}[h]
 \centering
-\caption{Negative sampling ratio ablation design}
+\caption{Negative sampling ratio experimental design}
 \label{tab:sampling-ablation}
-\begin{tabular}{lccc}
-\hline
-\textbf{Sampling Ratio} & \textbf{Neg:Pos} & \textbf{NeuMF-BCE} & \textbf{NeuMF-FL} \\
-\hline
-Standard & 1:4 & Baseline & Baseline \\
-Moderate & 1:10 & Test & Test \\
-High & 1:50 & Test & Test \\
-\hline
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Ratio} & \textbf{Imbalance} & \textbf{BCE} & $\boldsymbol{\alpha}$\textbf{-BCE} & \textbf{FL} \\
+\midrule
+1:4  & Low      & Test & Test & Test \\
+1:10 & Moderate & Test & Test & Test \\
+1:50 & High     & \textbf{Primary} & \textbf{Primary} & \textbf{Primary} \\
+\bottomrule
 \end{tabular}
 \end{table}
 
