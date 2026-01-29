@@ -219,6 +219,8 @@ While our work focuses on loss function optimization rather than architectural c
 
 In their experiments on benchmark datasets such as MovieLens and Pinterest, Several studies report that their enhanced NCF model outperforms baseline NCF variants, including GMF, MLP, and NeuMF, in terms of ranking metrics like Hit Rate and NDCG as well as error-based metrics such as RMSE and MAE. However, they also note that this improved performance comes with increased computational cost due to the outer-product interaction maps and convolutional layers, underscoring a trade-off between accuracy and efficiency.%\guy{Need to check if it not too similar to the paragraphs on those papers in background - all section}
 
+\enlargethispage{1\baselineskip}
+
 \subsection{Revisiting NCF vs. Matrix Factorization}
 
 Despite the popularity of NCF, recent literature has re-evaluated the necessity of replacing the inner product with an MLP. Rendle et al.~\cite{rendle2020neural} critically re-examined the purported dominance of NCF over MF, demonstrating that a simple dot product, when trained with appropriate hyperparameter tuning and regularization, matches or exceeds the performance of the MLP-based NCF. This finding challenges the assumption that non-linear neural architectures are inherently superior for capturing user--item interactions and suggests that earlier reported performance gaps were likely due to suboptimal benchmarking of MF baselines. Rendle et al.\ argue that the MLP in NCF is difficult to optimize and does not necessarily learn a better interaction function than the dot product. Their findings imply that model architecture (MLP vs.\ Dot Product) may not be the sole determinant of accuracy.
