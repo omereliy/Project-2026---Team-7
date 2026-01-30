@@ -365,26 +365,7 @@ where $\mathbf{w}$ is a learnable weight vector for the final prediction layer.
 \subsection{Illustrative Example: Effect of Focal Loss}
 \label{sec:toy-example}
 
-To illustrate how Focal Loss rebalances learning toward informative examples, consider a toy recommendation scenario with 5 users and 10 items, shown in Table~\ref{tab:toy-matrix}.
-
-\begin{table}[h]
-\centering
-\caption{Toy user-item interaction matrix (1 = observed interaction)}
-\label{tab:toy-matrix}
-\begin{tabular}{l|cccccccccc}
-\hline
-& $i_1$ & $i_2$ & $i_3$ & $i_4$ & $i_5$ & $i_6$ & $i_7$ & $i_8$ & $i_9$ & $i_{10}$ \\
-\hline
-$u_1$ & 1 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
-$u_2$ & 0 & 1 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 \\
-$u_3$ & 1 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
-$u_4$ & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 1 \\
-$u_5$ & 0 & 1 & 0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 \\
-\hline
-\end{tabular}
-\end{table}
-
-This matrix contains 10 positive interactions and 40 negative entries, yielding an imbalance ratio $\rho = 4:1$. Consider two training examples after several epochs of training:
+To illustrate how Focal Loss rebalances learning toward informative examples, consider a toy recommendation scenario with 5 users and 10 items containing 10 positive interactions and 40 negative entries, yielding an imbalance ratio $\rho = 4:1$. Consider two training examples after several epochs of training:
 
 \textbf{Easy negative sample} $(u_1, i_{10})$: The model correctly predicts low relevance with $\hat{y} = 0.05$, giving $p_t = 1 - 0.05 = 0.95$. The loss contributions are:
 \begin{align}
@@ -501,71 +482,13 @@ Algorithm~\ref{alg:focal-ncf} presents the training procedure for NCF with Focal
 
 \subsection{Baseline Models}
 \label{sec:baselines}
-We compare the following models, summarized in Table~\ref{tab:models}. PopRank serves as a non-personalized baseline that ranks items by global popularity (total interaction count), providing a lower bound that any personalized recommendation method should exceed.
-
-\begin{table}[h]
-\centering
-\caption{Models evaluated in experiments}
-\label{tab:models}
-\small
-\begin{tabularx}{\columnwidth}{@{}lllX@{}}
-\hline
-\textbf{Model} & \textbf{Type} & \textbf{Architecture} & \textbf{Loss} \\
-\hline
-PopRank & Non-personalized & Popularity ranking & N/A \\
-KNN-Item & Traditional & Item-based neighborhood & Cosine \\
-KNN-User & Traditional & User-based neighborhood & Cosine \\
-SVD & Traditional & Matrix factorization & MSE \\
-MF & Neural & Dot-product embeddings & BCE, BPR, FL \\
-NeuMF & Neural & GMF + MLP hybrid & BCE, BPR, FL \\
-NeuMF-$\alpha$BCE & Neural & GMF + MLP hybrid & $\alpha$-BCE \\
-\hline
-\end{tabularx}
-\end{table}
+We compare non-personalized popularity ranking (PopRank) as a lower bound, traditional methods including item-based and user-based KNN with cosine similarity and SVD with MSE loss, and neural methods including MF and NeuMF trained with BCE, BPR, and Focal Loss. An NeuMF-$\alpha$BCE control variant isolates the focusing mechanism's contribution.
 
 
 \subsection{Hyperparameter Configuration}
 \label{sec:hyperparams}
 %\omer{consult efrat on the number of models evaluated in our experiments and if the comparison table should be added as a hypothesis.}
-Table~\ref{tab:hyperparams-traditional} and Table~\ref{tab:hyperparams-neural} present the hyperparameter search spaces.
-
-\begin{table}[h]
-\centering
-\caption{Hyperparameter search space for traditional methods}
-\label{tab:hyperparams-traditional}
-\small
-\begin{tabularx}{\columnwidth}{@{}llXl@{}}
-\hline
-\textbf{Parameter} & \textbf{Model} & \textbf{Values} & \textbf{Rationale} \\
-\hline
-$K$ (neighbors) & KNN & \{10, 20, 40, 80\} & Neighborhood size \\
-Similarity & KNN & \{cosine, pearson\} & Distance metric \\
-Latent factors & SVD & \{32, 64, 128\} & Embedding dim. \\
-Regularization & SVD & \{0.001, 0.01, 0.1\} & Overfitting control \\
-\hline
-\end{tabularx}
-\end{table}
-
-\begin{table}[h]
-\centering
-\caption{Hyperparameter search space for neural methods}
-\label{tab:hyperparams-neural}
-\small
-\begin{tabularx}{\columnwidth}{@{}lXl@{}}
-\hline
-\textbf{Parameter} & \textbf{Values} & \textbf{Rationale} \\
-\hline
-Embedding size & \{32, 64, 128\} & Model capacity \\
-MLP layers & \{[64,32], [128,64,32]\} & Network depth \\
-Learning rate & \{0.0001, 0.001, 0.01\} & Optimization speed \\
-Batch size & \{256, 512, 1024\} & GPU utilization \\
-$\gamma$ (focusing) & \{0, 0.5, 1.0, 2.0, 3.0\} & $\gamma{=}0$: $\alpha$-BCE \\
-$\alpha$ (balancing) & \{0.25, 0.5, 0.75\} & See Sec.~\ref{sec:alpha-sampling} \\
-\hline
-\end{tabularx}
-\end{table}
-
-Note that $\gamma = 0$ reduces Focal Loss to $\alpha$-balanced BCE, enabling direct comparison for H3 testing. Based on the alpha-sampling interaction analysis, we anticipate optimal $\alpha$ values will exceed 0.25 for high sampling ratios.
+For traditional methods, KNN uses neighborhood sizes $K \in \{10, 20, 40, 80\}$ with cosine and Pearson similarity metrics, while SVD tests latent dimensions $\{32, 64, 128\}$ and regularization strengths $\{0.001, 0.01, 0.1\}$. Neural methods search over embedding sizes $\{32, 64, 128\}$, MLP architectures $\{[64,32], [128,64,32]\}$, learning rates $\{0.0001, 0.001, 0.01\}$, and batch sizes $\{256, 512, 1024\}$. Focal Loss parameters span $\gamma \in \{0, 0.5, 1.0, 2.0, 3.0\}$ and $\alpha \in \{0.25, 0.5, 0.75\}$, where $\gamma = 0$ reduces to $\alpha$-balanced BCE, enabling direct comparison for H3 testing. Based on the alpha-sampling interaction analysis, we anticipate optimal $\alpha$ values will exceed 0.25 for high sampling ratios.
 
 Hyperparameters are tuned on the validation set using grid search. The best configuration is selected based on NDCG@10, and final results are reported on the held-out test set.
 
@@ -579,32 +502,7 @@ R_{\text{eff}} = \frac{(1-\alpha) \times N_{\text{neg}}}{\alpha \times N_{\text{
 \end{equation}
 where $r$ is the negative sampling ratio.
 
-Table~\ref{tab:alpha-interaction} illustrates this interaction. With $\alpha = 0.25$ and 1:50 sampling, negatives receive 150 times the total weight of positives, potentially overwhelming the positive signal entirely. To achieve balanced effective weighting ($R_{\text{eff}} = 1$), one requires $\alpha = r/(r+1)$; for 1:50 sampling, this corresponds to $\alpha \approx 0.98$.
-
-\begin{table}[h]
-\centering
-\caption{Effective class weight ratio for various $\alpha$ and sampling configurations}
-\label{tab:alpha-interaction}
-\begin{tabular}{ccc}
-\toprule
-\textbf{Sampling} & $\boldsymbol{\alpha}$ & $\boldsymbol{R_{\text{eff}}}$ \\
-\midrule
-1:4  & 0.25 & 12:1 \\
-1:4  & 0.50 & 4:1 \\
-1:4  & 0.75 & 1.3:1 \\
-\midrule
-1:10 & 0.25 & 30:1 \\
-1:10 & 0.50 & 10:1 \\
-1:10 & 0.75 & 3.3:1 \\
-\midrule
-1:50 & 0.25 & 150:1 \\
-1:50 & 0.50 & 50:1 \\
-1:50 & 0.75 & 16.7:1 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-This analysis motivates our grid search over $\alpha$ values and explains why the default $\alpha = 0.25$ from computer vision applications may require adjustment for recommendation tasks with high negative sampling ratios.
+The effective class weight ratio $R_{\text{eff}}$ varies dramatically with these parameters: at 1:4 sampling, $\alpha = 0.25$ yields $R_{\text{eff}} = 12:1$, while at 1:50 sampling, the same $\alpha$ produces $R_{\text{eff}} = 150:1$, potentially overwhelming the positive signal entirely. Balanced weighting ($\alpha = 0.5$) at 1:50 sampling still results in $R_{\text{eff}} = 50:1$. To achieve $R_{\text{eff}} = 1$ at 1:50 sampling would require $\alpha \approx 0.98$. This analysis motivates our grid search over $\alpha$ values and explains why the default $\alpha = 0.25$ from computer vision applications may require adjustment for recommendation tasks with high negative sampling ratios.
 
 \subsection{Evaluation Protocol}
 \label{sec:evaluation}
@@ -674,38 +572,7 @@ To isolate the contribution of each component, we conduct the following ablation
     \item \textbf{Negative Sampling Ratio Ablation:} To test H2 (sampling robustness), we train both NeuMF-BCE and NeuMF-FL across varying negative sampling ratios: 1:4 (standard), 1:10 (moderate), and 1:50 (high). This ablation tests whether Focal Loss can effectively filter noise when exposed to higher proportions of negative examples, maintaining performance where BCE-based training degrades. Computational constraints preclude testing the full 1:All ratio; we use 1:50 as a tractable upper bound that still represents a substantial increase in negative exposure.
 \end{enumerate}
 
-Table~\ref{tab:ablation-matrix} summarizes the ablation configurations. Table~\ref{tab:sampling-ablation} presents the negative sampling ratio experimental design.
-
-\begin{table}[h]
-\centering
-\caption{Ablation study configuration matrix}
-\label{tab:ablation-matrix}
-\begin{tabular}{lccc}
-\toprule
-\textbf{Study} & \textbf{BCE} & $\boldsymbol{\alpha}$\textbf{-BCE} & \textbf{Focal Loss} \\
-\midrule
-Baseline & $\gamma=0, \alpha=0.5$ & -- & -- \\
-Class weighting & -- & $\gamma=0, \alpha \in \{0.25, 0.5, 0.75\}$ & -- \\
-Focusing effect & -- & $\gamma=0$ (control) & $\gamma \in \{0.5, 1, 2, 3\}$ \\
-Full grid & -- & -- & $\gamma \times \alpha$ grid \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{table}[h]
-\centering
-\caption{Negative sampling ratio experimental design}
-\label{tab:sampling-ablation}
-\begin{tabular}{lcccc}
-\toprule
-\textbf{Ratio} & \textbf{Imbalance} & \textbf{BCE} & $\boldsymbol{\alpha}$\textbf{-BCE} & \textbf{FL} \\
-\midrule
-1:4  & Low      & Test & Test & Test \\
-1:10 & Moderate & Test & Test & Test \\
-1:50 & High     & \textbf{Primary} & \textbf{Primary} & \textbf{Primary} \\
-\bottomrule
-\end{tabular}
-\end{table}
+The ablation studies compare BCE ($\gamma=0$, $\alpha=0.5$) as baseline, $\alpha$-BCE ($\gamma=0$, varying $\alpha \in \{0.25, 0.5, 0.75\}$) for class weighting effects, and full Focal Loss ($\gamma \in \{0.5, 1, 2, 3\}$) against the $\gamma=0$ control to isolate the focusing mechanism.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -788,44 +655,14 @@ To understand hyperparameter sensitivity, we conducted a grid search over 36 con
 \subsection{Mechanism Isolation: $\alpha$-BCE Control}
 \label{sec:mechanism-results}
 
-To test H3 (Mechanism), we compared full Focal Loss ($\gamma > 0$) against $\alpha$-balanced BCE ($\gamma = 0$) with matched $\alpha$ values. Table~\ref{tab:mechanism-results} presents results at 1:10 sampling.
-
-\begin{table}[h]
-\centering
-\caption{Mechanism isolation at 1:10 sampling}
-\label{tab:mechanism-results}
-\begin{tabular}{lccc}
-\toprule
-\textbf{Model} & \textbf{NDCG@10} & \textbf{HR@10} & \textbf{vs BCE} \\
-\midrule
-BCE (baseline) & 0.0575 & 0.1157 & -- \\
-$\alpha$-BCE ($\gamma{=}0$, $\alpha{=}0.25$) & \textbf{0.0600} & \textbf{0.1231} & +4.3\% \\
-Focal Loss ($\gamma{=}2$, $\alpha{=}0.25$) & 0.0556 & 0.1062 & $-3.3\%$ \\
-\bottomrule
-\end{tabular}
-\end{table}
+To test H3 (Mechanism), we compared full Focal Loss ($\gamma > 0$) against $\alpha$-balanced BCE ($\gamma = 0$) with matched $\alpha$ values at 1:10 sampling. The BCE baseline achieved NDCG@10 of 0.0575 and HR@10 of 0.1157. With class reweighting alone, $\alpha$-BCE ($\gamma = 0$, $\alpha = 0.25$) achieved NDCG@10 of 0.0600 (+4.3\%) and HR@10 of 0.1231. However, full Focal Loss ($\gamma = 2$, $\alpha = 0.25$) achieved only NDCG@10 of 0.0556 ($-3.3\%$) and HR@10 of 0.1062.
 
 \textbf{Critical Finding.} At moderate imbalance (1:10), $\alpha$-balanced BCE \emph{outperforms} both standard BCE and full Focal Loss. This indicates that class reweighting alone is sufficient at this imbalance level, and the focusing mechanism ($\gamma > 0$) provides no additional benefit---in fact, it degrades performance. H3 is \textbf{not supported} at moderate imbalance.
 
 \subsection{Hypothesis Outcomes}
 \label{sec:hypothesis-outcomes}
 
-Table~\ref{tab:hypothesis-outcomes} summarizes the status of each research hypothesis based on experimental evidence.
-
-\begin{table}[h]
-\centering
-\caption{Summary of hypothesis outcomes}
-\label{tab:hypothesis-outcomes}
-\begin{tabular}{lp{5.5cm}l}
-\toprule
-\textbf{Hypothesis} & \textbf{Evidence} & \textbf{Status} \\
-\midrule
-H1 (Efficacy) & +10.0\% NDCG@10 at 1:50; $p = 0.0625$; Cohen's $d = 2.632$ & \textbf{Supported} \\
-H2 (Robustness) & FL wins 2/3 ratios; fails at 1:10 & Partially supported \\
-H3 (Mechanism) & $\alpha$-BCE beats FL at 1:10 & Not supported (1:10) \\
-\bottomrule
-\end{tabular}
-\end{table}
+Based on experimental evidence, H1 (Efficacy) was \textbf{supported}: Focal Loss achieved +10.0\% NDCG@10 at 1:50 sampling with $p = 0.0625$ and Cohen's $d = 2.632$. H2 (Robustness) was \textbf{partially supported}: Focal Loss outperformed BCE on 2 of 3 sampling ratios but failed at 1:10. H3 (Mechanism) was \textbf{not supported} at moderate imbalance, as $\alpha$-BCE outperformed full Focal Loss at 1:10.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
