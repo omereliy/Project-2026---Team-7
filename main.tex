@@ -145,23 +145,6 @@ Two core principles distinguish recommender systems from general information ret
 
 Within this framework, one of the main recommendation approaches is {Collaborative Filtering (CF)}~\cite{sarwar2001item}. CF predicts user preferences by analyzing patterns of interactions across many users, assuming that people with similar behaviors prefer similar items. It is typically implemented either through memory-based methods, which use similarity measures like cosine similarity or Pearson correlation to find similar users or items, or through model-based methods that learn latent factors using techniques such as matrix factorization or clustering.
 
-\subsection{Traditional Methods: KNN and Matrix Factorization}
-\label{sec:traditional-methods}
-
-In practice, traditional recommender systems in industry often rely on neighborhood-based Collaborative Filtering methods such as k-nearest neighbors, as well as model-based approaches like matrix factorization using Singular Value Decomposition (SVD), which have proven effective and scalable for many real-world applications~\cite{koren2009matrix}.
-
-\subsubsection{K-Nearest Neighbors}
-
-K-Nearest Neighbors (KNN) is a simple and widely used algorithm that identifies the most similar items or users by comparing them through a similarity or distance measure, such as cosine similarity, Pearson correlation, or Euclidean distance~\cite{guo2003knn}. In recommender systems, KNN is typically applied in two ways: item-based KNN, where the system finds items similar to those a user already interacted with, and user-based KNN, which recommends items liked by users who have similar behavior patterns. By analyzing logs, clickstream data, or rating histories, KNN can classify items according to shared tastes and generate intuitive recommendations.
-
-Despite its interpretability and ease of implementation, KNN has notable limitations. Its performance depends strongly on the chosen value of $K$, and selecting this value often requires repeated experimentation. KNN also becomes less efficient as dataset size grows, since it must compute similarities across many users or items. High-dimensional or sparse data further degrades its accuracy, making dimensionality reduction techniques such as PCA or LDA useful in practice. Because of these challenges, KNN is effective in smaller or denser datasets but less suitable for large-scale recommendation tasks without additional optimization~\cite{su2009survey}.
-
-\subsubsection{Singular Value Decomposition}
-
-Singular Value Decomposition (SVD) is a matrix factorization technique that decomposes a matrix into three smaller matrices capturing its underlying structure~\cite{rahman2023extended}. In recommender systems, the user--item interaction matrix (ratings, clicks, purchases) is typically sparse, and SVD is used to uncover lower-dimensional latent factors that describe hidden relationships between users and items.
-
-By decomposing the interaction matrix into user factors, item factors, and singular values, SVD represents both users and items in a shared latent space where patterns such as preferences, item attributes, or genres naturally emerge. This allows the system to estimate missing ratings by reconstructing an approximated version of the matrix, even when data is incomplete. SVD is particularly useful in collaborative filtering because it reduces dimensionality, improves scalability, and can generate reasonable predictions for new or sparsely rated users and items by leveraging the learned latent factors~\cite{koren2009matrix}. These advantages make SVD an effective model-based approach in many real-world recommendation systems.
-
 \subsection{Neural Collaborative Filtering (NCF)}
 \label{sec:ncf}
 
@@ -204,12 +187,6 @@ For recommendation systems with implicit feedback, where class imbalance mirrors
 \label{sec:related-work}
 
 Recent research has explored both architectural enhancements to collaborative filtering and advanced loss functions to handle data sparsity and imbalance. We survey relevant work in both directions. While traditional approaches often rely on heuristic negative sampling to mitigate the dominance of unobserved interactions, more recent methods aim to address this fundamental class imbalance directly through advanced architectures or loss functions.
-
-\subsection{Improvements to Traditional Collaborative Filtering}
-
-Rahman~\cite{rahman2023extended} addresses a central problem in recommendation systems: improving prediction accuracy in sparse and cold-start settings, where traditional collaborative filtering often fails to estimate missing ratings reliably. To tackle this, the study evaluates Adaptive KNN, which adjusts the number of neighbors based on local data density, and an SVD-based model that uses matrix factorization to better reconstruct incomplete user--item matrices. The results show that Adaptive KNN struggles with sparsity and imbalance, while SVD achieves noticeably lower MAE and RMSE values by capturing latent user--item structures more effectively. This connects directly to our research, as we also compare traditional CF models (KNN and SVD) with a more advanced approach. While the article improves performance by adding features and adaptive mechanisms, our work approaches the problem by modifying the training process itself through the application of focal loss within a Neural Collaborative Filtering model to better handle sparse and imbalanced data.%\guy{This paragraph maybe not relevant with the new direction, they talk about KNN and SVD improvements}
-
-Airen and Agrawal~\cite{airen2022knn} systematically evaluate variations of the KNN algorithm, including KNN-Basic, KNN-WithMeans, KNN-WithZScore, and KNN-Baseline, combined with different similarity measures (cosine, MSD, Pearson, and Pearson-baseline) on the MovieLens 100K dataset. Their experiments show that normalization choices, bias adjustments, and similarity functions significantly impact error metrics (MAE, MSE, RMSE) and ranking-based measures, demonstrating how methodological variations within collaborative filtering models can meaningfully alter evaluation outcomes. This observation aligns with our research, where we examine how modifying the learning approach, specifically incorporating focal loss within NCF, affects performance compared to standard CF baselines.
 
 \subsection{Neural Collaborative Filtering Architectures}
 
@@ -362,35 +339,7 @@ The final NeuMF prediction combines both branches:
 \end{equation}
 where $\mathbf{w}$ is a learnable weight vector for the final prediction layer.
 
-\subsection{Illustrative Example: Effect of Focal Loss}
-\label{sec:toy-example}
-
-To illustrate how Focal Loss rebalances learning toward informative examples, consider a toy recommendation scenario with 5 users and 10 items containing 10 positive interactions and 40 negative entries, yielding an imbalance ratio $\rho = 4:1$. Consider two training examples after several epochs of training:
-
-\textbf{Easy negative sample} $(u_1, i_{10})$: The model correctly predicts low relevance with $\hat{y} = 0.05$, giving $p_t = 1 - 0.05 = 0.95$. The loss contributions are:
-\begin{align}
-\mathcal{L}_{BCE} &= -\log(0.95) = 0.051 \\
-\mathcal{L}_{FL} &= -(1-\alpha)(1-0.95)^2 \log(0.95) = 0.75 \times 0.0025 \times 0.051 \approx 0.0001
-\end{align}
-using $\gamma=2$ and $\alpha=0.25$. Focal Loss reduces this contribution by approximately $500\times$.
-
-\textbf{Hard positive sample} $(u_1, i_1)$: The model struggles to identify this positive with $\hat{y} = 0.3$, giving $p_t = 0.3$. The loss contributions are:
-\begin{align}
-\mathcal{L}_{BCE} &= -\log(0.3) = 1.204 \\
-\mathcal{L}_{FL} &= -\alpha(1-0.3)^2 \log(0.3) = 0.25 \times 0.49 \times 1.204 \approx 0.147
-\end{align}
-
-Focal Loss reduces the hard positive's contribution by only $\sim$8$\times$, compared to $\sim$500$\times$ for the easy negative. This differential down-weighting shifts gradient mass toward hard examples, enabling the model to learn more effectively from the limited positive signals and challenging edge cases rather than wasting capacity on trivially classified negatives.
-
-\subsection{Novel Contributions}
-\label{sec:contributions}
-
-This work makes the following contributions:
-\begin{enumerate}
-    \item \textbf{Systematic Evaluation of Focal Loss for General-Purpose Recommendation:} Unlike prior work applying Focal Loss to specialized domains~\cite{meng2022weighted}, we evaluate its effectiveness on standard recommendation benchmarks with implicit feedback.
-    \item \textbf{Reconciliation with Prior Findings:} Building on Rendle et al.'s~\cite{rendle2020neural} observation that loss function choice may matter more than architecture, we investigate whether Focal Loss can improve both MF and NCF, potentially reducing the performance gap between them.
-    \item \textbf{Comprehensive Comparison with Traditional Methods:} We benchmark Focal Loss-enhanced models against traditional collaborative filtering baselines (KNN, SVD) to contextualize improvements within the broader recommendation landscape.
-\end{enumerate}
+To illustrate, with $\gamma=2$ and $\alpha=0.25$, an easy negative ($\hat{y}=0.05$) has its loss contribution reduced by ${\sim}500\times$ compared to BCE, while a hard positive ($\hat{y}=0.3$) is reduced by only ${\sim}8\times$. This differential down-weighting shifts gradient mass toward informative examples.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -545,34 +494,7 @@ Results are reported as mean $\pm$ standard deviation across seeds, with statist
 \subsection{Ablation Study Design}
 \label{sec:ablation}
 
-To isolate the contribution of each component, we conduct the following ablation studies:
-
-\begin{enumerate}
-    \item \textbf{Loss Function Ablation:} Compare BCE, BPR, and Focal Loss on fixed NeuMF architecture to isolate the effect of the loss function.
-
-    \item \textbf{Focal Loss Component Ablation:}
-    \begin{itemize}
-        \item Vary $\gamma \in \{0, 0.5, 1.0, 2.0, 3.0\}$ with fixed $\alpha=0.25$ to analyze the focusing effect ($\gamma=0$ reduces to $\alpha$-BCE).
-        \item Vary $\alpha \in \{0.25, 0.5, 0.75\}$ with fixed $\gamma=2.0$ to analyze the class-balancing effect.
-    \end{itemize}
-
-    \item \textbf{Mechanism Isolation ($\alpha$-BCE Control):} To test H3, we compare full Focal Loss ($\gamma > 0$) against $\alpha$-balanced BCE ($\gamma = 0$) with matched $\alpha$ values. If performance differences are negligible, the focusing mechanism provides no benefit beyond class reweighting; if Focal Loss significantly outperforms $\alpha$-BCE, the focusing mechanism is demonstrably necessary.
-
-    Specifically, we evaluate:
-    \begin{itemize}
-        \item BCE: $\gamma = 0$, $\alpha = 0.5$ (standard)
-        \item $\alpha$-BCE: $\gamma = 0$, $\alpha \in \{0.25, 0.5, 0.75\}$
-        \item Focal Loss: $\gamma \in \{0.5, 1.0, 2.0, 3.0\}$, $\alpha \in \{0.25, 0.5, 0.75\}$
-    \end{itemize}
-
-    \item \textbf{Architecture Ablation:} Test Focal Loss on GMF-only, MLP-only, and full NeuMF to determine architecture-specific effects.
-
-    \item \textbf{Dataset Ablation:} Compare Focal Loss improvements across ML-100K and ML-1M to analyze the correlation between imbalance ratio and performance gain.
-
-    \item \textbf{Negative Sampling Ratio Ablation:} To test H2 (sampling robustness), we train both NeuMF-BCE and NeuMF-FL across varying negative sampling ratios: 1:4 (standard), 1:10 (moderate), and 1:50 (high). This ablation tests whether Focal Loss can effectively filter noise when exposed to higher proportions of negative examples, maintaining performance where BCE-based training degrades. Computational constraints preclude testing the full 1:All ratio; we use 1:50 as a tractable upper bound that still represents a substantial increase in negative exposure.
-\end{enumerate}
-
-The ablation studies compare BCE ($\gamma=0$, $\alpha=0.5$) as baseline, $\alpha$-BCE ($\gamma=0$, varying $\alpha \in \{0.25, 0.5, 0.75\}$) for class weighting effects, and full Focal Loss ($\gamma \in \{0.5, 1, 2, 3\}$) against the $\gamma=0$ control to isolate the focusing mechanism.
+We conduct ablations along five dimensions: (1)~loss function (BCE, BPR, Focal Loss) on fixed NeuMF; (2)~Focal Loss components, varying $\gamma \in \{0, 0.5, 1.0, 2.0, 3.0\}$ and $\alpha \in \{0.25, 0.5, 0.75\}$; (3)~mechanism isolation comparing full Focal Loss ($\gamma > 0$) against $\alpha$-BCE ($\gamma = 0$) to test H3; (4)~architecture (GMF, MLP, NeuMF); and (5)~negative sampling ratio (1:4, 1:10, 1:50) to test H2.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
